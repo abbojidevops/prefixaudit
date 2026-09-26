@@ -1,0 +1,108 @@
+# Dogfood: this repo audits its own example prompts with the shipped action.
+#
+# `uses: ./` makes github.action_path the repository root, so this exercises
+# exactly the composite action a customer would install. If the action breaks,
+# this workflow breaks — which is the point.
+name: prefix-audit
+
+on:
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'src/**'
+      - 'cli/**'
+      - 'action/**'
+      - 'action.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write # needed only to post the PR comment
+
+jobs:
+  # The clean example must stay clean. This is the gate a customer copies.
+  gate:
+    name: Prompt prefixes still cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - id: audit
+        uses: ./
+        with:
+          path: examples/clean-support-prompt.md
+          provider: anthropic
+          requests-per-day: '8000'
+          fail-on: critical
+          breakpoint: 'true'
+          logs-cache: 'true'
+          comment: 'true'
+          annotate: 'true'
+
+      - name: Show the headline numbers
+        run: |
+          echo "score          : ${{ steps.audit.outputs.score }}"
+          echo "grade          : ${{ steps.audit.outputs.grade }}"
+          echo "blocking found : ${{ steps.audit.outputs.findings }}"
+          echo "modelled waste : ${{ steps.audit.outputs.monthly-waste }}/mo"
+          echo "passed         : ${{ steps.audit.outputs.passed }}"
+
+  # ------------------------------------------------------------------
+  # The broken example exists to demonstrate failure, so it is expected to
+  # fail. `continue-on-error` keeps the suite green while still proving the
+  # gate refuses a prompt that will not cache.
+  # ------------------------------------------------------------------
+  prove-the-gate-bites:
+    name: Gate rejects the broken example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - id: broken
+        uses: ./
+        continue-on-error: true
+        with:
+          path: examples/broken-support-prompt.md
+          provider: anthropic
+          requests-per-day: '8000'
+          fail-on: critical
+          comment: 'false'
+
+      - name: Assert it actually failed
+        run: |
+          if [ "${{ steps.broken.outputs.passed }}" != "false" ]; then
+            echo "::error::The broken example was supposed to fail the gate but did not."
+            exit 1
+          fi
+          echo "Confirmed: the gate rejects the broken example (score ${{ steps.broken.outputs.score }})."
+
+  # ------------------------------------------------------------------
+  # Baseline drift: fail if a prompt changes without the baseline being
+  # updated in the same PR. Catches an accidental edit to a prompt that
+  # nobody meant to ship.
+  # ------------------------------------------------------------------
+  baseline:
+    name: Prompt baseline has not drifted
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: ./
+        with:
+          path: examples/clean-support-prompt.md
+          baseline: .prefixaudit-baseline.json
+          breakpoint: 'true'
+          logs-cache: 'true'
+          comment: 'false'

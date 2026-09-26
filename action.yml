@@ -1,0 +1,218 @@
+name: 'PrefixAudit'
+description: 'Fail CI when a change to a system prompt would silently break prompt caching — and say which line costs the money.'
+author: 'PrefixAudit'
+
+branding:
+  icon: 'zap'
+  color: 'orange'
+
+inputs:
+  path:
+    description: 'Prompt file(s), glob, or directory to audit. Directories are scanned recursively for .md/.txt/.json.'
+    required: false
+    default: 'prompts'
+  provider:
+    description: 'anthropic | openai | gemini | deepseek | custom'
+    required: false
+    default: 'anthropic'
+  requests-per-day:
+    description: 'Requests per day on this prefix, for the cost model.'
+    required: false
+    default: '1000'
+  ttl:
+    description: 'Cache TTL tier: 5m or 1h.'
+    required: false
+    default: '5m'
+  fail-on:
+    description: 'Fail the build at this severity or worse: critical | high | medium.'
+    required: false
+    default: 'critical'
+  max-waste:
+    description: 'Also fail if modelled monthly waste exceeds this many dollars. Empty disables.'
+    required: false
+    default: ''
+  baseline:
+    description: 'Path to a baseline JSON. Fails if the prefix hash drifted from it.'
+    required: false
+    default: ''
+  update-baseline:
+    description: 'Write the baseline instead of comparing against it.'
+    required: false
+    default: 'false'
+  breakpoint:
+    description: 'Assert the prefix carries a cache_control marker. Leave false for plain-text prompts — prose cannot express a marker.'
+    required: false
+    default: 'false'
+  logs-cache:
+    description: 'Assert you log provider cache-token usage fields.'
+    required: false
+    default: 'false'
+  comment:
+    description: 'Post a pull-request comment naming the offending lines.'
+    required: false
+    default: 'true'
+  annotate:
+    description: 'Emit workflow annotations so findings appear inline in the PR diff.'
+    required: false
+    default: 'true'
+
+outputs:
+  score:
+    description: 'Score of the worst-scoring audited prompt (0-100).'
+    value: ${{ steps.audit.outputs.score }}
+  grade:
+    description: 'Letter grade of the worst-scoring audited prompt.'
+    value: ${{ steps.audit.outputs.grade }}
+  findings:
+    description: 'Number of findings at or above the fail-on threshold.'
+    value: ${{ steps.audit.outputs.findings }}
+  monthly-waste:
+    description: 'Total modelled monthly waste in dollars across audited prompts.'
+    value: ${{ steps.audit.outputs.monthly-waste }}
+  passed:
+    description: '"true" when the gate passed.'
+    value: ${{ steps.audit.outputs.passed }}
+
+runs:
+  using: 'composite'
+  steps:
+    # ------------------------------------------------------------------
+    # 1. Run the auditor.
+    #
+    # The CLI exits 1 on findings, which would abort the job before the
+    # comment step runs. Capture the code, report, then re-raise it in
+    # step 3 — otherwise a failing audit silently posts no explanation.
+    # ------------------------------------------------------------------
+    - name: Audit prompt prefixes
+      id: audit
+      shell: bash
+      env:
+        PA_PATH: ${{ inputs.path }}
+        PA_PROVIDER: ${{ inputs.provider }}
+        PA_REQUESTS: ${{ inputs.requests-per-day }}
+        PA_TTL: ${{ inputs.ttl }}
+        PA_FAIL_ON: ${{ inputs.fail-on }}
+        PA_MAX_WASTE: ${{ inputs.max-waste }}
+        PA_BASELINE: ${{ inputs.baseline }}
+        PA_UPDATE_BASELINE: ${{ inputs.update-baseline }}
+        PA_BREAKPOINT: ${{ inputs.breakpoint }}
+        PA_LOGS_CACHE: ${{ inputs.logs-cache }}
+        PA_ANNOTATE: ${{ inputs.annotate }}
+      run: |
+        set -uo pipefail
+        ACTION_DIR="${{ github.action_path }}"
+        REPORT_JSON="${RUNNER_TEMP}/prefixaudit.json"
+
+        args=( --provider "$PA_PROVIDER" --requests "$PA_REQUESTS" --ttl "$PA_TTL"
+               --fail-on "$PA_FAIL_ON" --json )
+
+        [ -n "$PA_MAX_WASTE" ]        && args+=( --max-waste "$PA_MAX_WASTE" )
+        [ -n "$PA_BASELINE" ]         && args+=( --baseline "$PA_BASELINE" )
+        [ "$PA_UPDATE_BASELINE" = "true" ] && args+=( --update-baseline )
+        [ "$PA_BREAKPOINT"  = "true" ] && args+=( --breakpoint )
+        [ "$PA_LOGS_CACHE"  = "true" ] && args+=( --logs-cache )
+
+        # A directory is expanded by the CLI; anything else is passed through
+        # so shell globs and explicit file lists both work.
+        if [ -d "$PA_PATH" ]; then
+          args+=( --dir "$PA_PATH" )
+        else
+          # shellcheck disable=SC2206
+          expanded=( $PA_PATH )
+          args+=( "${expanded[@]}" )
+        fi
+
+        echo "::group::prefix-audit ${expanded:-$PA_PATH}"
+        node "$ACTION_DIR/cli/prefix-audit.mjs" "${args[@]}" > "$REPORT_JSON"
+        code=$?
+        echo "::endgroup::"
+
+        # Human-readable summary + annotations, derived from the same JSON so
+        # the log and the PR comment can never disagree.
+        annotate_flag=""
+        [ "$PA_ANNOTATE" = "true" ] && annotate_flag="--annotate"
+        node "$ACTION_DIR/action/report.mjs" --in "$REPORT_JSON" \
+             --comment-out "${RUNNER_TEMP}/prefixaudit-comment.md" \
+             --fail-on "$PA_FAIL_ON" $annotate_flag --quiet || true
+
+        # Surface headline numbers as step outputs.
+        node -e '
+          const fs = require("fs");
+          const j = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+          const rs = j.results || [];
+          const worst = rs.reduce((a, b) => (a === null || b.score < a.score ? b : a), null);
+          const out = process.env.GITHUB_OUTPUT;
+          const set = (k, v) => fs.appendFileSync(out, `${k}=${v}\n`);
+          set("score", worst ? worst.score : 100);
+          set("grade", worst ? worst.grade : "A");
+          set("monthly-waste", Math.round((j.totalMonthlyWaste || 0) * 100) / 100);
+          set("passed", j.failed ? "false" : "true");
+          let n = 0;
+          for (const r of rs) n += (r.findings || []).length;
+          set("findings", n);
+        ' "$REPORT_JSON"
+
+        echo "report_path=${RUNNER_TEMP}/prefixaudit-comment.md" >> "$GITHUB_OUTPUT"
+        exit $code
+
+    # ------------------------------------------------------------------
+    # 2. Post the PR comment. Uses the default GITHUB_TOKEN, so this costs
+    #    nothing and needs no secret. `if: always()` because step 1 exits
+    #    non-zero on a failing audit.
+    #
+    #    The comment is upserted: it looks for a marker in existing comments
+    #    and edits that one, so a branch does not accumulate a comment per
+    #    push.
+    # ------------------------------------------------------------------
+    - name: Comment on the pull request
+      if: always() && inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = `${process.env.RUNNER_TEMP}/prefixaudit-comment.md`;
+          if (!fs.existsSync(path)) {
+            core.info('No report generated; skipping comment.');
+            return;
+          }
+          const MARKER = '<!-- prefixaudit-report -->';
+          const body = MARKER + '\n' + fs.readFileSync(path, 'utf8');
+
+          const { data: existing } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            per_page: 100,
+          });
+          const prior = existing.find((c) => (c.body || '').includes(MARKER));
+
+          if (prior) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: prior.id,
+              body,
+            });
+            core.info(`Updated existing PrefixAudit comment #${prior.id}.`);
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+            core.info('Posted PrefixAudit comment.');
+          }
+
+    # ------------------------------------------------------------------
+    # 3. Re-raise the audit exit code so the gate actually gates.
+    # ------------------------------------------------------------------
+    - name: Enforce the gate
+      if: always()
+      shell: bash
+      run: |
+        if [ "${{ steps.audit.outputs.passed }}" = "false" ]; then
+          echo "::error::PrefixAudit gate failed — see the report above or the PR comment."
+          exit 1
+        fi
+        echo "PrefixAudit gate passed."

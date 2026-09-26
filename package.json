@@ -1,0 +1,56 @@
+{
+  "name": "prefixaudit",
+  "version": "0.1.1",
+  "description": "Find the line in your prompt prefix that is costing you thousands. Zero-dependency prompt cache auditor.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "prompt-caching",
+    "llm",
+    "cost",
+    "anthropic",
+    "openai",
+    "gemini",
+    "claude",
+    "cache",
+    "finops",
+    "ci",
+    "static-analysis",
+    "system-prompt",
+    "ai-cost"
+  ],
+  "homepage": "https://prefixaudit.pages.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abbojidevops/prefixaudit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abbojidevops/prefixaudit/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "prefix-audit": "cli/prefix-audit.mjs"
+  },
+  "files": [
+    "cli/",
+    "src/",
+    "action/",
+    "action.yml",
+    "README.md",
+    "ACTION.md",
+    "LICENSE",
+    "scripts/audit-report.mjs"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build.mjs",
+    "cli": "node cli/prefix-audit.mjs",
+    "seo": "node scripts/gen-seo.mjs",
+    "prepublishOnly": "npm test && npm run build && npm run check-publish && npm run check-sales",
+    "report": "node scripts/audit-report.mjs",
+    "check-publish": "node scripts/check-publish.mjs",
+    "check-sales": "node scripts/check-sales.mjs"
+  }
+}

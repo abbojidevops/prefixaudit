@@ -1,0 +1,4374 @@
+{
+  "summary": {
+    "generatedAt": "2026-09-22T12:31:27.269Z",
+    "sourceDir": "/tmp/spl",
+    "corpusFiles": 236,
+    "corpusFilter": {
+      "kept": 236,
+      "excluded": 177,
+      "excludedReason": "Skill docs, worked examples, API references, repo metadata and superseded versions are not system prompts. Auditing them would inflate every finding, because example code is full of the patterns we detect.",
+      "excludedExamples": [
+        "CONTRIBUTING.md",
+        "SKILL.md",
+        "SKILL.md",
+        "SKILL.md",
+        "SKILL.md",
+        "SKILL.md"
+      ]
+    },
+    "vendors": [
+      "Anthropic",
+      "Cursor",
+      "DeepSeek",
+      "Google",
+      "Kimi",
+      "Meta",
+      "Microsoft",
+      "Misc",
+      "Mistral",
+      "Notion",
+      "OpenAI",
+      "OpenCode",
+      "Perplexity",
+      "Pi",
+      "Qwen",
+      "xAI"
+    ],
+    "requestsPerDayAssumed": 1000,
+    "ruleScope": {
+      "included": [
+        "dynamic-timestamp",
+        "volatile-id",
+        "personalisation-in-prefix",
+        "mutable-memory-in-prefix",
+        "below-minimum",
+        "ordering",
+        "tool-churn",
+        "retry-rebuilds",
+        "unstable-serialisation",
+        "prefix-bloat"
+      ],
+      "excluded": [
+        "no-breakpoint",
+        "no-cache-metric",
+        "model-churn",
+        "ttl-cadence"
+      ],
+      "excludedReason": "These rules need request-level or runtime context that extracted prompt text does not contain. Including them would report dataset artefacts, not prompt properties."
+    },
+    "headline": {
+      "analysed": 236,
+      "withAnyFinding": 167,
+      "withAnyFindingPct": 70.8,
+      "withCritical": 131,
+      "withCriticalPct": 55.5,
+      "withHighOrWorse": 154,
+      "withHighOrWorsePct": 65.3,
+      "zeroHitRateCeiling": 68,
+      "zeroHitRatePct": 28.8,
+      "belowProviderMinimum": 68,
+      "belowProviderMinimumPct": 28.8
+    },
+    "prefixTokens": {
+      "min": 29,
+      "p25": 810,
+      "median": 2914,
+      "p75": 7260,
+      "p90": 39821,
+      "max": 134569,
+      "mean": 11054
+    },
+    "rulesByFrequency": [
+      {
+        "id": "dynamic-timestamp",
+        "severity": "critical",
+        "title": "A timestamp is inside the cached prefix",
+        "files": 76,
+        "pctOfCorpus": 32.2,
+        "example": {
+          "file": "Anthropic/claude-cowork/claude-cowork.md",
+          "line": 614,
+          "snippet": "Today's date: Monday, August 10, 2026 (for more granularity, use bash)"
+        }
+      },
+      {
+        "id": "below-minimum",
+        "severity": "critical",
+        "title": "Prefix is below the provider minimum, so caching is silently skipped",
+        "files": 68,
+        "pctOfCorpus": 28.8,
+        "example": {
+          "file": "Anthropic/claude-code/agents/Explore.md",
+          "line": 0,
+          "snippet": "894 estimated tokens vs. 1,024 minimum for Anthropic Claude"
+        }
+      },
+      {
+        "id": "prefix-bloat",
+        "severity": "medium",
+        "title": "The cached prefix is far larger than it needs to be",
+        "files": 36,
+        "pctOfCorpus": 15.3,
+        "example": {
+          "file": "Anthropic/claude-code/claude-code-desktop-fable-5.md",
+          "line": 0,
+          "snippet": "prefix is ~78,151 tokens; above ~32,000 every call re-reads it"
+        }
+      },
+      {
+        "id": "mutable-memory-in-prefix",
+        "severity": "high",
+        "title": "Mutable working memory lives in the system prompt",
+        "files": 27,
+        "pctOfCorpus": 11.4,
+        "example": {
+          "file": "Anthropic/claude-code/claude-code-desktop-fable-5.md",
+          "line": 80,
+          "snippet": "# Scratchpad Directory"
+        }
+      },
+      {
+        "id": "personalisation-in-prefix",
+        "severity": "high",
+        "title": "Per-user personalisation is inside the cached prefix",
+        "files": 11,
+        "pctOfCorpus": 4.7,
+        "example": {
+          "file": "Anthropic/claude-opus-4.6.md",
+          "line": 280,
+          "snippet": "`<example_user_memories>`User collects vintage typewriters, user's name is [name], user is looking to buy a new home in the Denver suburbs, user is working o..."
+        }
+      },
+      {
+        "id": "volatile-id",
+        "severity": "critical",
+        "title": "Per-request identifiers are inside the cached prefix",
+        "files": 7,
+        "pctOfCorpus": 3,
+        "example": {
+          "file": "Anthropic/claude-cowork/claude-cowork-dispatch.md",
+          "line": 115,
+          "snippet": "- /Users/asgeirtj/Library/Application Support/Claude/local-agent-mode-sessions/7783783b-15eb-4429-8c93-12c8866976cc/c10d12d3-385e-47be-a7c0-7ae082be47d9/agen..."
+        }
+      },
+      {
+        "id": "ordering",
+        "severity": "high",
+        "title": "Volatile content sits ahead of stable content",
+        "files": 4,
+        "pctOfCorpus": 1.7,
+        "example": {
+          "file": "Google/gemini-3-pro.md",
+          "line": 3,
+          "snippet": "Current time: Monday, December 22, 2025"
+        }
+      },
+      {
+        "id": "tool-churn",
+        "severity": "high",
+        "title": "Tool definitions can change between calls",
+        "files": 2,
+        "pctOfCorpus": 0.8,
+        "example": {
+          "file": "Anthropic/claude-cowork/claude-cowork.md",
+          "line": 425,
+          "snippet": "* mcp__remote-devices__* — when the user has the Claude desktop app open, these tools let Claude reach files on the user's own computer (see `<user_device_br..."
+        }
+      }
+    ],
+    "byVendor": [
+      {
+        "vendor": "Anthropic",
+        "files": 92,
+        "critical": 58,
+        "high": 25,
+        "anyFinding": 78,
+        "tokens": 1624192,
+        "pctWithFinding": 84.8,
+        "medianTokens": 3277
+      },
+      {
+        "vendor": "OpenAI",
+        "files": 58,
+        "critical": 52,
+        "high": 10,
+        "anyFinding": 46,
+        "tokens": 534679,
+        "pctWithFinding": 79.3,
+        "medianTokens": 1058
+      },
+      {
+        "vendor": "Google",
+        "files": 24,
+        "critical": 12,
+        "high": 2,
+        "anyFinding": 13,
+        "tokens": 77458,
+        "pctWithFinding": 54.2,
+        "medianTokens": 3025
+      },
+      {
+        "vendor": "Misc",
+        "files": 24,
+        "critical": 13,
+        "high": 5,
+        "anyFinding": 12,
+        "tokens": 75222,
+        "pctWithFinding": 50,
+        "medianTokens": 2535
+      },
+      {
+        "vendor": "xAI",
+        "files": 14,
+        "critical": 9,
+        "high": 0,
+        "anyFinding": 11,
+        "tokens": 158792,
+        "pctWithFinding": 78.6,
+        "medianTokens": 4844
+      },
+      {
+        "vendor": "Microsoft",
+        "files": 5,
+        "critical": 1,
+        "high": 0,
+        "anyFinding": 1,
+        "tokens": 34914,
+        "pctWithFinding": 20,
+        "medianTokens": 3526
+      },
+      {
+        "vendor": "Perplexity",
+        "files": 5,
+        "critical": 2,
+        "high": 0,
+        "anyFinding": 1,
+        "tokens": 22847,
+        "pctWithFinding": 20,
+        "medianTokens": 5367
+      },
+      {
+        "vendor": "Meta",
+        "files": 3,
+        "critical": 0,
+        "high": 0,
+        "anyFinding": 0,
+        "tokens": 37337,
+        "pctWithFinding": 0,
+        "medianTokens": 13932
+      },
+      {
+        "vendor": "Kimi",
+        "files": 2,
+        "critical": 0,
+        "high": 1,
+        "anyFinding": 1,
+        "tokens": 11487,
+        "pctWithFinding": 50,
+        "medianTokens": 8446
+      },
+      {
+        "vendor": "Mistral",
+        "files": 2,
+        "critical": 0,
+        "high": 0,
+        "anyFinding": 0,
+        "tokens": 8769,
+        "pctWithFinding": 0,
+        "medianTokens": 5076
+      },
+      {
+        "vendor": "Qwen",
+        "files": 2,
+        "critical": 1,
+        "high": 0,
+        "anyFinding": 1,
+        "tokens": 2609,
+        "pctWithFinding": 50,
+        "medianTokens": 1920
+      }
+    ],
+    "worstOffenders": [
+      {
+        "file": "Anthropic/claude-in-chrome.md",
+        "vendor": "Anthropic",
+        "tokens": 16336,
+        "critical": 2,
+        "high": 1,
+        "hitRate": 0.036960930106800016
+      },
+      {
+        "file": "Misc/confer.md",
+        "vendor": "Misc",
+        "tokens": 986,
+        "critical": 2,
+        "high": 1,
+        "hitRate": 0
+      },
+      {
+        "file": "Misc/raycast-ai.md",
+        "vendor": "Misc",
+        "tokens": 274,
+        "critical": 2,
+        "high": 1,
+        "hitRate": 0
+      },
+      {
+        "file": "OpenAI/gpt-5.4-api.md",
+        "vendor": "OpenAI",
+        "tokens": 200,
+        "critical": 2,
+        "high": 1,
+        "hitRate": 0
+      },
+      {
+        "file": "OpenAI/gpt-5.5-api.md",
+        "vendor": "OpenAI",
+        "tokens": 200,
+        "critical": 2,
+        "high": 1,
+        "hitRate": 0
+      },
+      {
+        "file": "OpenAI/gpt-5.5-pro-api.md",
+        "vendor": "OpenAI",
+        "tokens": 191,
+        "critical": 2,
+        "high": 1,
+        "hitRate": 0
+      },
+      {
+        "file": "OpenAI/gpt-5.3-instant.md",
+        "vendor": "OpenAI",
+        "tokens": 17370,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0.0013810519670125476
+      },
+      {
+        "file": "OpenAI/gpt-4o.md",
+        "vendor": "OpenAI",
+        "tokens": 7260,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0.002818685669041976
+      },
+      {
+        "file": "Misc/fellou-browser.md",
+        "vendor": "Misc",
+        "tokens": 4993,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0.47571579132267705
+      },
+      {
+        "file": "OpenAI/gpt-4.1.md",
+        "vendor": "OpenAI",
+        "tokens": 2848,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0.006582004026637778
+      },
+      {
+        "file": "Anthropic/official/2024-09-09-claude-sonnet-3.5-text-only.md",
+        "vendor": "Anthropic",
+        "tokens": 997,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "Misc/reddit-answers.md",
+        "vendor": "Misc",
+        "tokens": 948,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "Google/gemini-2.0-flash-webapp.md",
+        "vendor": "Google",
+        "tokens": 506,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "OpenAI/gpt-5.3-chat-api.md",
+        "vendor": "OpenAI",
+        "tokens": 450,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "Perplexity/voice-assistant.md",
+        "vendor": "Perplexity",
+        "tokens": 444,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "OpenAI/gpt-4o-advanced-voice-mode.md",
+        "vendor": "OpenAI",
+        "tokens": 434,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "Anthropic/official/2024-07-12-claude-opus-3.md",
+        "vendor": "Anthropic",
+        "tokens": 433,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "OpenAI/API/gpt-5-reasoning-effort-high-api.md",
+        "vendor": "OpenAI",
+        "tokens": 238,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "Anthropic/official/2024-07-12-claude-haiku-3.md",
+        "vendor": "Anthropic",
+        "tokens": 159,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      },
+      {
+        "file": "DeepSeek/deepseek-chat.md",
+        "vendor": "DeepSeek",
+        "tokens": 139,
+        "critical": 2,
+        "high": 0,
+        "hitRate": 0
+      }
+    ]
+  },
+  "rows": [
+    {
+      "file": "Anthropic/anthropic-interviewer.md",
+      "vendor": "Anthropic",
+      "tokens": 2405,
+      "totalTokensInCorpus": 2405,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/anthropic_reminders.md",
+      "vendor": "Anthropic",
+      "tokens": 2151,
+      "totalTokensInCorpus": 2151,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-code/agents/Explore.md",
+      "vendor": "Anthropic",
+      "tokens": 894,
+      "totalTokensInCorpus": 894,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/agents/Plan.md",
+      "vendor": "Anthropic",
+      "tokens": 645,
+      "totalTokensInCorpus": 645,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/agents/claude-code-guide.md",
+      "vendor": "Anthropic",
+      "tokens": 2014,
+      "totalTokensInCorpus": 2014,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-code/agents/claude.md",
+      "vendor": "Anthropic",
+      "tokens": 410,
+      "totalTokensInCorpus": 410,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/agents/general-purpose.md",
+      "vendor": "Anthropic",
+      "tokens": 368,
+      "totalTokensInCorpus": 368,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/agents/statusline-setup.md",
+      "vendor": "Anthropic",
+      "tokens": 3270,
+      "totalTokensInCorpus": 3270,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-code/archive/glob-tool.md",
+      "vendor": "Anthropic",
+      "tokens": 320,
+      "totalTokensInCorpus": 320,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/archive/grep-tool.md",
+      "vendor": "Anthropic",
+      "tokens": 1110,
+      "totalTokensInCorpus": 1110,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-desktop-fable-5.md",
+      "vendor": "Anthropic",
+      "tokens": 78151,
+      "totalTokensInCorpus": 78151,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.029465153553520085
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-docs-assistant.md",
+      "vendor": "Anthropic",
+      "tokens": 4201,
+      "totalTokensInCorpus": 4201,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-fable-5.1.md",
+      "vendor": "Anthropic",
+      "tokens": 81946,
+      "totalTokensInCorpus": 81946,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-fable-5.md",
+      "vendor": "Anthropic",
+      "tokens": 81391,
+      "totalTokensInCorpus": 81391,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-haiku-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 40046,
+      "totalTokensInCorpus": 40046,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.15992718077197754
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-headless-fable-5.1.md",
+      "vendor": "Anthropic",
+      "tokens": 51337,
+      "totalTokensInCorpus": 51337,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-opus-4.6.md",
+      "vendor": "Anthropic",
+      "tokens": 39830,
+      "totalTokensInCorpus": 39830,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.16081315642375926
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-opus-4.7.md",
+      "vendor": "Anthropic",
+      "tokens": 39831,
+      "totalTokensInCorpus": 39831,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.1608329067598656
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-opus-4.8.md",
+      "vendor": "Anthropic",
+      "tokens": 31905,
+      "totalTokensInCorpus": 31905,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.05880572392865524
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-opus-5.md",
+      "vendor": "Anthropic",
+      "tokens": 33125,
+      "totalTokensInCorpus": 33125,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.041497228694230226
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-sonnet-4.6.md",
+      "vendor": "Anthropic",
+      "tokens": 39821,
+      "totalTokensInCorpus": 39821,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.16078459066753759
+    },
+    {
+      "file": "Anthropic/claude-code/claude-code-sonnet-5.md",
+      "vendor": "Anthropic",
+      "tokens": 40060,
+      "totalTokensInCorpus": 40060,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.15986565714486323
+    },
+    {
+      "file": "Anthropic/claude-code/commands/btw.md",
+      "vendor": "Anthropic",
+      "tokens": 234,
+      "totalTokensInCorpus": 234,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/commands/compact.md",
+      "vendor": "Anthropic",
+      "tokens": 1389,
+      "totalTokensInCorpus": 1389,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-code/commands/rename.md",
+      "vendor": "Anthropic",
+      "tokens": 374,
+      "totalTokensInCorpus": 374,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/output-styles/concise.md",
+      "vendor": "Anthropic",
+      "tokens": 347,
+      "totalTokensInCorpus": 347,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/output-styles/explanatory.md",
+      "vendor": "Anthropic",
+      "tokens": 279,
+      "totalTokensInCorpus": 279,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/output-styles/learning.md",
+      "vendor": "Anthropic",
+      "tokens": 979,
+      "totalTokensInCorpus": 979,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/output-styles/proactive.md",
+      "vendor": "Anthropic",
+      "tokens": 334,
+      "totalTokensInCorpus": 334,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-code/prompts/advisor-tool.md",
+      "vendor": "Anthropic",
+      "tokens": 1634,
+      "totalTokensInCorpus": 1634,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Anthropic/claude-code/prompts/prompt-suggestion.md",
+      "vendor": "Anthropic",
+      "tokens": 315,
+      "totalTokensInCorpus": 315,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/claude-cowork/claude-cowork-dispatch.md",
+      "vendor": "Anthropic",
+      "tokens": 16259,
+      "totalTokensInCorpus": 16259,
+      "findings": [
+        {
+          "id": "volatile-id",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.1886456390334208
+    },
+    {
+      "file": "Anthropic/claude-cowork/claude-cowork.md",
+      "vendor": "Anthropic",
+      "tokens": 40161,
+      "totalTokensInCorpus": 40161,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "tool-churn",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 2
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.19999999999999996
+    },
+    {
+      "file": "Anthropic/claude-cowork/setup-cowork/SKILL.md",
+      "vendor": "Anthropic",
+      "tokens": 2472,
+      "totalTokensInCorpus": 2472,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-cowork/setup-writing-style/SKILL.md",
+      "vendor": "Anthropic",
+      "tokens": 8843,
+      "totalTokensInCorpus": 8843,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-design/claude-design.md",
+      "vendor": "Anthropic",
+      "tokens": 34666,
+      "totalTokensInCorpus": 34666,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Anthropic/claude-fable-5.1.md",
+      "vendor": "Anthropic",
+      "tokens": 115039,
+      "totalTokensInCorpus": 115039,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.26084823421405057
+    },
+    {
+      "file": "Anthropic/claude-fable-5.md",
+      "vendor": "Anthropic",
+      "tokens": 98433,
+      "totalTokensInCorpus": 98433,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.2831525983333498
+    },
+    {
+      "file": "Anthropic/claude-for-excel.md",
+      "vendor": "Anthropic",
+      "tokens": 3961,
+      "totalTokensInCorpus": 3961,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.7267235252309879
+    },
+    {
+      "file": "Anthropic/claude-for-word.md",
+      "vendor": "Anthropic",
+      "tokens": 5910,
+      "totalTokensInCorpus": 5910,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-in-chrome.md",
+      "vendor": "Anthropic",
+      "tokens": 16336,
+      "totalTokensInCorpus": 16336,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "volatile-id",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.036960930106800016
+    },
+    {
+      "file": "Anthropic/claude-in-powerpoint.md",
+      "vendor": "Anthropic",
+      "tokens": 1408,
+      "totalTokensInCorpus": 1408,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-mobile-ios.md",
+      "vendor": "Anthropic",
+      "tokens": 15545,
+      "totalTokensInCorpus": 15545,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Anthropic/claude-opus-4.6-no-tools.md",
+      "vendor": "Anthropic",
+      "tokens": 12288,
+      "totalTokensInCorpus": 12288,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-opus-4.6.md",
+      "vendor": "Anthropic",
+      "tokens": 43196,
+      "totalTokensInCorpus": 43196,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 2,
+      "medium": 1,
+      "hitRate": 0.14824242627233597
+    },
+    {
+      "file": "Anthropic/claude-opus-4.7.md",
+      "vendor": "Anthropic",
+      "tokens": 43601,
+      "totalTokensInCorpus": 43601,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 2,
+      "medium": 1,
+      "hitRate": 0.16933779499823887
+    },
+    {
+      "file": "Anthropic/claude-opus-4.8.md",
+      "vendor": "Anthropic",
+      "tokens": 43866,
+      "totalTokensInCorpus": 43866,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 2,
+      "medium": 1,
+      "hitRate": 0.1847270463333115
+    },
+    {
+      "file": "Anthropic/claude-opus-5.md",
+      "vendor": "Anthropic",
+      "tokens": 51833,
+      "totalTokensInCorpus": 51833,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.10173925117689475
+    },
+    {
+      "file": "Anthropic/claude-projects-thread-claude.md",
+      "vendor": "Anthropic",
+      "tokens": 134569,
+      "totalTokensInCorpus": 134569,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 2
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 2
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.0481767137424598
+    },
+    {
+      "file": "Anthropic/claude-science.md",
+      "vendor": "Anthropic",
+      "tokens": 36102,
+      "totalTokensInCorpus": 36102,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Anthropic/claude-sonnet-4.6-no-tools.md",
+      "vendor": "Anthropic",
+      "tokens": 11836,
+      "totalTokensInCorpus": 11836,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/claude-sonnet-4.6.md",
+      "vendor": "Anthropic",
+      "tokens": 41961,
+      "totalTokensInCorpus": 41961,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 2,
+      "medium": 1,
+      "hitRate": 0.16108489617159705
+    },
+    {
+      "file": "Anthropic/claude-sonnet-5.md",
+      "vendor": "Anthropic",
+      "tokens": 44846,
+      "totalTokensInCorpus": 44846,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 2,
+      "medium": 1,
+      "hitRate": 0.1769807969453795
+    },
+    {
+      "file": "Anthropic/claude-voice-mode.md",
+      "vendor": "Anthropic",
+      "tokens": 219,
+      "totalTokensInCorpus": 219,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/official/2024-07-12-claude-haiku-3.md",
+      "vendor": "Anthropic",
+      "tokens": 159,
+      "totalTokensInCorpus": 159,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/official/2024-07-12-claude-opus-3.md",
+      "vendor": "Anthropic",
+      "tokens": 433,
+      "totalTokensInCorpus": 433,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/official/2024-07-12-claude-sonnet-3.5-text-and-images.md",
+      "vendor": "Anthropic",
+      "tokens": 1182,
+      "totalTokensInCorpus": 1182,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.01453736959124341
+    },
+    {
+      "file": "Anthropic/official/2024-09-09-claude-sonnet-3.5-text-and-images.md",
+      "vendor": "Anthropic",
+      "tokens": 1222,
+      "totalTokensInCorpus": 1222,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.014056556970398537
+    },
+    {
+      "file": "Anthropic/official/2024-09-09-claude-sonnet-3.5-text-only.md",
+      "vendor": "Anthropic",
+      "tokens": 997,
+      "totalTokensInCorpus": 997,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/official/2024-10-22-claude-haiku-3.5-text-only.md",
+      "vendor": "Anthropic",
+      "tokens": 1983,
+      "totalTokensInCorpus": 1983,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.0068437180796731
+    },
+    {
+      "file": "Anthropic/official/2024-10-22-claude-sonnet-3.5-text-and-images.md",
+      "vendor": "Anthropic",
+      "tokens": 2620,
+      "totalTokensInCorpus": 2620,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.005146836209506511
+    },
+    {
+      "file": "Anthropic/official/2024-10-22-claude-sonnet-3.5-text-only.md",
+      "vendor": "Anthropic",
+      "tokens": 2416,
+      "totalTokensInCorpus": 2416,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.0056022408963585235
+    },
+    {
+      "file": "Anthropic/official/2024-11-22-claude-sonnet-3.5-text-and-images.md",
+      "vendor": "Anthropic",
+      "tokens": 2644,
+      "totalTokensInCorpus": 2644,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.005094396164219361
+    },
+    {
+      "file": "Anthropic/official/2024-11-22-claude-sonnet-3.5-text-only.md",
+      "vendor": "Anthropic",
+      "tokens": 2457,
+      "totalTokensInCorpus": 2457,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.00551948051948048
+    },
+    {
+      "file": "Anthropic/official/2025-02-24-claude-haiku-3.5-text-and-images.md",
+      "vendor": "Anthropic",
+      "tokens": 2364,
+      "totalTokensInCorpus": 2364,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.001702852277564948
+    },
+    {
+      "file": "Anthropic/official/2025-02-24-claude-sonnet-3.7.md",
+      "vendor": "Anthropic",
+      "tokens": 2571,
+      "totalTokensInCorpus": 2571,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.00528977051730839
+    },
+    {
+      "file": "Anthropic/official/2025-05-22-claude-opus-4.md",
+      "vendor": "Anthropic",
+      "tokens": 2173,
+      "totalTokensInCorpus": 2173,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.006259780907668211
+    },
+    {
+      "file": "Anthropic/official/2025-05-22-claude-sonnet-4.md",
+      "vendor": "Anthropic",
+      "tokens": 2174,
+      "totalTokensInCorpus": 2174,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.0062586286240220446
+    },
+    {
+      "file": "Anthropic/official/2025-07-31-claude-opus-4.md",
+      "vendor": "Anthropic",
+      "tokens": 3276,
+      "totalTokensInCorpus": 3276,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.004109506254910245
+    },
+    {
+      "file": "Anthropic/official/2025-07-31-claude-sonnet-4.md",
+      "vendor": "Anthropic",
+      "tokens": 3277,
+      "totalTokensInCorpus": 3277,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.004108761329305155
+    },
+    {
+      "file": "Anthropic/official/2025-08-05-claude-opus-4.1.md",
+      "vendor": "Anthropic",
+      "tokens": 3685,
+      "totalTokensInCorpus": 3685,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.0036551279294775307
+    },
+    {
+      "file": "Anthropic/official/2025-08-05-claude-opus-4.md",
+      "vendor": "Anthropic",
+      "tokens": 3276,
+      "totalTokensInCorpus": 3276,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.004109506254910245
+    },
+    {
+      "file": "Anthropic/official/2025-08-05-claude-sonnet-4.md",
+      "vendor": "Anthropic",
+      "tokens": 3277,
+      "totalTokensInCorpus": 3277,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.004108761329305155
+    },
+    {
+      "file": "Anthropic/official/2025-09-29-claude-sonnet-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 2644,
+      "totalTokensInCorpus": 2644,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.009226510841150226
+    },
+    {
+      "file": "Anthropic/official/2025-10-15-claude-haiku-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 2649,
+      "totalTokensInCorpus": 2649,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.009232189567625837
+    },
+    {
+      "file": "Anthropic/official/2025-11-19-claude-haiku-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 2914,
+      "totalTokensInCorpus": 2914,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.6335626052779337
+    },
+    {
+      "file": "Anthropic/official/2025-11-19-claude-sonnet-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 2914,
+      "totalTokensInCorpus": 2914,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.6340043487409693
+    },
+    {
+      "file": "Anthropic/official/2025-11-24-claude-opus-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 3191,
+      "totalTokensInCorpus": 3191,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/2026-01-18-claude-haiku-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 3123,
+      "totalTokensInCorpus": 3123,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.6591713648878983
+    },
+    {
+      "file": "Anthropic/official/2026-01-18-claude-opus-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 3350,
+      "totalTokensInCorpus": 3350,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/2026-01-18-claude-sonnet-4.5.md",
+      "vendor": "Anthropic",
+      "tokens": 3124,
+      "totalTokensInCorpus": 3124,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.659305373525557
+    },
+    {
+      "file": "Anthropic/official/2026-02-05-claude-opus-4.6.md",
+      "vendor": "Anthropic",
+      "tokens": 3817,
+      "totalTokensInCorpus": 3817,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.9019295168234731
+    },
+    {
+      "file": "Anthropic/official/2026-02-17-claude-sonnet-4.6.md",
+      "vendor": "Anthropic",
+      "tokens": 3870,
+      "totalTokensInCorpus": 3870,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/2026-04-16-claude-opus-4.7.md",
+      "vendor": "Anthropic",
+      "tokens": 4873,
+      "totalTokensInCorpus": 4873,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/2026-05-28-claude-opus-4.8.md",
+      "vendor": "Anthropic",
+      "tokens": 4717,
+      "totalTokensInCorpus": 4717,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/2026-06-09-claude-fable-5.md",
+      "vendor": "Anthropic",
+      "tokens": 4504,
+      "totalTokensInCorpus": 4504,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/2026-07-24-claude-opus-5.md",
+      "vendor": "Anthropic",
+      "tokens": 4520,
+      "totalTokensInCorpus": 4520,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/2026-09-01-claude-fable-5.1.md",
+      "vendor": "Anthropic",
+      "tokens": 5717,
+      "totalTokensInCorpus": 5717,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Anthropic/official/all.md",
+      "vendor": "Anthropic",
+      "tokens": 98579,
+      "totalTokensInCorpus": 98579,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 2
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.055165801268429515
+    },
+    {
+      "file": "Anthropic/research_instructions.md",
+      "vendor": "Anthropic",
+      "tokens": 4434,
+      "totalTokensInCorpus": 4434,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.44636227761438696
+    },
+    {
+      "file": "Anthropic/sonnet-4.6-reminders.md",
+      "vendor": "Anthropic",
+      "tokens": 810,
+      "totalTokensInCorpus": 810,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Anthropic/visualize.md",
+      "vendor": "Anthropic",
+      "tokens": 17790,
+      "totalTokensInCorpus": 17790,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Cursor/cursor.md",
+      "vendor": "Cursor",
+      "tokens": 3972,
+      "totalTokensInCorpus": 3972,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "DeepSeek/deepseek-chat.md",
+      "vendor": "DeepSeek",
+      "tokens": 139,
+      "totalTokensInCorpus": 139,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/ai-studio-build.md",
+      "vendor": "Google",
+      "tokens": 2193,
+      "totalTokensInCorpus": 2193,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/antigravity-cli.md",
+      "vendor": "Google",
+      "tokens": 5555,
+      "totalTokensInCorpus": 5555,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-2.0-flash-webapp.md",
+      "vendor": "Google",
+      "tokens": 506,
+      "totalTokensInCorpus": 506,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/gemini-2.5-flash-image-preview.md",
+      "vendor": "Google",
+      "tokens": 1018,
+      "totalTokensInCorpus": 1018,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/gemini-2.5-pro-api.md",
+      "vendor": "Google",
+      "tokens": 709,
+      "totalTokensInCorpus": 709,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/gemini-2.5-pro-guided-learning.md",
+      "vendor": "Google",
+      "tokens": 3293,
+      "totalTokensInCorpus": 3293,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-2.5-pro-webapp.md",
+      "vendor": "Google",
+      "tokens": 424,
+      "totalTokensInCorpus": 424,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/gemini-3-flash.md",
+      "vendor": "Google",
+      "tokens": 3397,
+      "totalTokensInCorpus": 3397,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-3-pro.md",
+      "vendor": "Google",
+      "tokens": 3025,
+      "totalTokensInCorpus": 3025,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "ordering",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.0038036204832007092
+    },
+    {
+      "file": "Google/gemini-3.1-pro-api.md",
+      "vendor": "Google",
+      "tokens": 649,
+      "totalTokensInCorpus": 649,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/gemini-3.1-pro.md",
+      "vendor": "Google",
+      "tokens": 5922,
+      "totalTokensInCorpus": 5922,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.014310115771493659
+    },
+    {
+      "file": "Google/gemini-3.5-flash-ai-studio.md",
+      "vendor": "Google",
+      "tokens": 613,
+      "totalTokensInCorpus": 613,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/gemini-3.5-flash.md",
+      "vendor": "Google",
+      "tokens": 3942,
+      "totalTokensInCorpus": 3942,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-3.7-flash.md",
+      "vendor": "Google",
+      "tokens": 7828,
+      "totalTokensInCorpus": 7828,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-3.8-flash.md",
+      "vendor": "Google",
+      "tokens": 13779,
+      "totalTokensInCorpus": 13779,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-cli.md",
+      "vendor": "Google",
+      "tokens": 6233,
+      "totalTokensInCorpus": 6233,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-diffusion.md",
+      "vendor": "Google",
+      "tokens": 1537,
+      "totalTokensInCorpus": 1537,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Google/gemini-in-chrome.md",
+      "vendor": "Google",
+      "tokens": 2470,
+      "totalTokensInCorpus": 2470,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-workspace.md",
+      "vendor": "Google",
+      "tokens": 4600,
+      "totalTokensInCorpus": 4600,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/gemini-youtube.md",
+      "vendor": "Google",
+      "tokens": 4162,
+      "totalTokensInCorpus": 4162,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/google-search-ai-mode.md",
+      "vendor": "Google",
+      "tokens": 910,
+      "totalTokensInCorpus": 910,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/jules.md",
+      "vendor": "Google",
+      "tokens": 3473,
+      "totalTokensInCorpus": 3473,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Google/nano-banana-2-api.md",
+      "vendor": "Google",
+      "tokens": 701,
+      "totalTokensInCorpus": 701,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Google/notebooklm-chat.md",
+      "vendor": "Google",
+      "tokens": 519,
+      "totalTokensInCorpus": 519,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Kimi/kimi-2.6.md",
+      "vendor": "Kimi",
+      "tokens": 3041,
+      "totalTokensInCorpus": 3041,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.20802558440569552
+    },
+    {
+      "file": "Kimi/kimi-3.md",
+      "vendor": "Kimi",
+      "tokens": 8446,
+      "totalTokensInCorpus": 8446,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Meta/meta-spark.md",
+      "vendor": "Meta",
+      "tokens": 13932,
+      "totalTokensInCorpus": 13932,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Meta/muse-code.md",
+      "vendor": "Meta",
+      "tokens": 6075,
+      "totalTokensInCorpus": 6075,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Meta/muse-spark-1.1.md",
+      "vendor": "Meta",
+      "tokens": 17330,
+      "totalTokensInCorpus": 17330,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Microsoft/copilot-cli.md",
+      "vendor": "Microsoft",
+      "tokens": 16745,
+      "totalTokensInCorpus": 16745,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.09999999999999998
+    },
+    {
+      "file": "Microsoft/copilot-in-microsoft-word.md",
+      "vendor": "Microsoft",
+      "tokens": 3244,
+      "totalTokensInCorpus": 3244,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.24146740910579756
+    },
+    {
+      "file": "Microsoft/copilot-macos-app.md",
+      "vendor": "Microsoft",
+      "tokens": 3526,
+      "totalTokensInCorpus": 3526,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Microsoft/github-copilot.md",
+      "vendor": "Microsoft",
+      "tokens": 8956,
+      "totalTokensInCorpus": 8956,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Microsoft/vscode-copilot-agent.md",
+      "vendor": "Microsoft",
+      "tokens": 2443,
+      "totalTokensInCorpus": 2443,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/amp-code.md",
+      "vendor": "Misc",
+      "tokens": 11744,
+      "totalTokensInCorpus": 11744,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "Misc/brave-search.md",
+      "vendor": "Misc",
+      "tokens": 29,
+      "totalTokensInCorpus": 29,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Misc/character-ai.md",
+      "vendor": "Misc",
+      "tokens": 301,
+      "totalTokensInCorpus": 301,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Misc/commandcode-cli.md",
+      "vendor": "Misc",
+      "tokens": 7690,
+      "totalTokensInCorpus": 7690,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/confer.md",
+      "vendor": "Misc",
+      "tokens": 986,
+      "totalTokensInCorpus": 986,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Misc/devin-cli.md",
+      "vendor": "Misc",
+      "tokens": 3831,
+      "totalTokensInCorpus": 3831,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/docker-gordon-ai.md",
+      "vendor": "Misc",
+      "tokens": 9506,
+      "totalTokensInCorpus": 9506,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/elevenlabs-voice-agent.md",
+      "vendor": "Misc",
+      "tokens": 616,
+      "totalTokensInCorpus": 616,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Misc/fellou-browser.md",
+      "vendor": "Misc",
+      "tokens": 4993,
+      "totalTokensInCorpus": 4993,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "volatile-id",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.47571579132267705
+    },
+    {
+      "file": "Misc/gizmo-ai.md",
+      "vendor": "Misc",
+      "tokens": 1357,
+      "totalTokensInCorpus": 1357,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/hermes.md",
+      "vendor": "Misc",
+      "tokens": 3992,
+      "totalTokensInCorpus": 3992,
+      "findings": [
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.22444558463029474
+    },
+    {
+      "file": "Misc/indus-ai.md",
+      "vendor": "Misc",
+      "tokens": 3623,
+      "totalTokensInCorpus": 3623,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/kagi-assistant.md",
+      "vendor": "Misc",
+      "tokens": 1126,
+      "totalTokensInCorpus": 1126,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/minimax-m2.5.md",
+      "vendor": "Misc",
+      "tokens": 1254,
+      "totalTokensInCorpus": 1254,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.8096250483185157
+    },
+    {
+      "file": "Misc/opencode.md",
+      "vendor": "Misc",
+      "tokens": 3442,
+      "totalTokensInCorpus": 3442,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/proton-lumo-ai.md",
+      "vendor": "Misc",
+      "tokens": 2535,
+      "totalTokensInCorpus": 2535,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/raycast-ai.md",
+      "vendor": "Misc",
+      "tokens": 274,
+      "totalTokensInCorpus": 274,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Misc/reddit-answers.md",
+      "vendor": "Misc",
+      "tokens": 948,
+      "totalTokensInCorpus": 948,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Misc/sesame-ai-maya.md",
+      "vendor": "Misc",
+      "tokens": 3109,
+      "totalTokensInCorpus": 3109,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/stack-overflow-ai-assist.md",
+      "vendor": "Misc",
+      "tokens": 1467,
+      "totalTokensInCorpus": 1467,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/t3-code.md",
+      "vendor": "Misc",
+      "tokens": 2221,
+      "totalTokensInCorpus": 2221,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/t3.chat.md",
+      "vendor": "Misc",
+      "tokens": 524,
+      "totalTokensInCorpus": 524,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Misc/warp-2.0-agent.md",
+      "vendor": "Misc",
+      "tokens": 2847,
+      "totalTokensInCorpus": 2847,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Misc/zed.md",
+      "vendor": "Misc",
+      "tokens": 6807,
+      "totalTokensInCorpus": 6807,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Mistral/mistral-code.md",
+      "vendor": "Mistral",
+      "tokens": 3693,
+      "totalTokensInCorpus": 3693,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Mistral/mistral-medium-3.5.md",
+      "vendor": "Mistral",
+      "tokens": 5076,
+      "totalTokensInCorpus": 5076,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Notion/notion-ai.md",
+      "vendor": "Notion",
+      "tokens": 10391,
+      "totalTokensInCorpus": 10391,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/4o-2025-09-03-new-personality.md",
+      "vendor": "OpenAI",
+      "tokens": 581,
+      "totalTokensInCorpus": 581,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/API/gpt-5-reasoning-effort-high-api.md",
+      "vendor": "OpenAI",
+      "tokens": 238,
+      "totalTokensInCorpus": 238,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/API/o3-high-api.md",
+      "vendor": "OpenAI",
+      "tokens": 182,
+      "totalTokensInCorpus": 182,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/API/o3-low-api.md",
+      "vendor": "OpenAI",
+      "tokens": 181,
+      "totalTokensInCorpus": 181,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/API/o3-medium-api.md",
+      "vendor": "OpenAI",
+      "tokens": 181,
+      "totalTokensInCorpus": 181,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/API/o4-mini-high.md",
+      "vendor": "OpenAI",
+      "tokens": 182,
+      "totalTokensInCorpus": 182,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/API/o4-mini-low-api.md",
+      "vendor": "OpenAI",
+      "tokens": 181,
+      "totalTokensInCorpus": 181,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/API/o4-mini-medium-api.md",
+      "vendor": "OpenAI",
+      "tokens": 181,
+      "totalTokensInCorpus": 181,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/Codex/codex-auto-review.md",
+      "vendor": "OpenAI",
+      "tokens": 2653,
+      "totalTokensInCorpus": 2653,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/codex-desktop-realtime-voice-agent.md",
+      "vendor": "OpenAI",
+      "tokens": 546,
+      "totalTokensInCorpus": 546,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/Codex/codex-full.md",
+      "vendor": "OpenAI",
+      "tokens": 97731,
+      "totalTokensInCorpus": 97731,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "OpenAI/Codex/computer-use.md",
+      "vendor": "OpenAI",
+      "tokens": 1426,
+      "totalTokensInCorpus": 1426,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/control-chrome.md",
+      "vendor": "OpenAI",
+      "tokens": 2813,
+      "totalTokensInCorpus": 2813,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/control-in-app-browser.md",
+      "vendor": "OpenAI",
+      "tokens": 2327,
+      "totalTokensInCorpus": 2327,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/gpt-5.3-codex-spark.md",
+      "vendor": "OpenAI",
+      "tokens": 2489,
+      "totalTokensInCorpus": 2489,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/gpt-5.4-mini.md",
+      "vendor": "OpenAI",
+      "tokens": 2287,
+      "totalTokensInCorpus": 2287,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/gpt-5.4.md",
+      "vendor": "OpenAI",
+      "tokens": 2653,
+      "totalTokensInCorpus": 2653,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/gpt-5.5.md",
+      "vendor": "OpenAI",
+      "tokens": 3963,
+      "totalTokensInCorpus": 3963,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/gpt-5.6.md",
+      "vendor": "OpenAI",
+      "tokens": 3634,
+      "totalTokensInCorpus": 3634,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/Codex/gpt-6-astra-chatgpt-work-local.md",
+      "vendor": "OpenAI",
+      "tokens": 93185,
+      "totalTokensInCorpus": 93185,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "OpenAI/Codex/gpt-6-astra.md",
+      "vendor": "OpenAI",
+      "tokens": 127716,
+      "totalTokensInCorpus": 127716,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 2
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "OpenAI/Codex/personality_friendly.md",
+      "vendor": "OpenAI",
+      "tokens": 581,
+      "totalTokensInCorpus": 581,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/Codex/personality_friendly_gpt-5.5.md",
+      "vendor": "OpenAI",
+      "tokens": 403,
+      "totalTokensInCorpus": 403,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/Codex/personality_pragmatic.md",
+      "vendor": "OpenAI",
+      "tokens": 467,
+      "totalTokensInCorpus": 467,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/Codex/personality_pragmatic_gpt-5.5.md",
+      "vendor": "OpenAI",
+      "tokens": 392,
+      "totalTokensInCorpus": 392,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/Codex/plan_mode.md",
+      "vendor": "OpenAI",
+      "tokens": 1871,
+      "totalTokensInCorpus": 1871,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/chatgpt-4.5.md",
+      "vendor": "OpenAI",
+      "tokens": 7288,
+      "totalTokensInCorpus": 7288,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "tool-churn",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.003833620854897468
+    },
+    {
+      "file": "OpenAI/chatgpt-4o-deprecation-preparedness-prompt.md",
+      "vendor": "OpenAI",
+      "tokens": 419,
+      "totalTokensInCorpus": 419,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/chatgpt-atlas.md",
+      "vendor": "OpenAI",
+      "tokens": 653,
+      "totalTokensInCorpus": 653,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/chatgpt-gpt-5-agent-mode.md",
+      "vendor": "OpenAI",
+      "tokens": 4788,
+      "totalTokensInCorpus": 4788,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.003881951265141903
+    },
+    {
+      "file": "OpenAI/chatgpt-personality-instructions.md",
+      "vendor": "OpenAI",
+      "tokens": 1616,
+      "totalTokensInCorpus": 1616,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/gpt-4.1-mini.md",
+      "vendor": "OpenAI",
+      "tokens": 1051,
+      "totalTokensInCorpus": 1051,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.020143884892086295
+    },
+    {
+      "file": "OpenAI/gpt-4.1.md",
+      "vendor": "OpenAI",
+      "tokens": 2848,
+      "totalTokensInCorpus": 2848,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "volatile-id",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.006582004026637778
+    },
+    {
+      "file": "OpenAI/gpt-4.5.md",
+      "vendor": "OpenAI",
+      "tokens": 2428,
+      "totalTokensInCorpus": 2428,
+      "findings": [
+        {
+          "id": "volatile-id",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.5479215828644037
+    },
+    {
+      "file": "OpenAI/gpt-4o-advanced-voice-mode.md",
+      "vendor": "OpenAI",
+      "tokens": 434,
+      "totalTokensInCorpus": 434,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-4o-legacy-voice-mode.md",
+      "vendor": "OpenAI",
+      "tokens": 1241,
+      "totalTokensInCorpus": 1241,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.24165668321067946
+    },
+    {
+      "file": "OpenAI/gpt-4o.md",
+      "vendor": "OpenAI",
+      "tokens": 7260,
+      "totalTokensInCorpus": 7260,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "volatile-id",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.002818685669041976
+    },
+    {
+      "file": "OpenAI/gpt-5-listener-personality.md",
+      "vendor": "OpenAI",
+      "tokens": 442,
+      "totalTokensInCorpus": 442,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5-nerdy-personality.md",
+      "vendor": "OpenAI",
+      "tokens": 643,
+      "totalTokensInCorpus": 643,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5-robot-personality.md",
+      "vendor": "OpenAI",
+      "tokens": 521,
+      "totalTokensInCorpus": 521,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5-thinking.md",
+      "vendor": "OpenAI",
+      "tokens": 17669,
+      "totalTokensInCorpus": 17669,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 2
+        },
+        {
+          "id": "personalisation-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 2,
+      "medium": 1,
+      "hitRate": 0.001127138714048681
+    },
+    {
+      "file": "OpenAI/gpt-5.1-efficient.md",
+      "vendor": "OpenAI",
+      "tokens": 222,
+      "totalTokensInCorpus": 222,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.1-nerdy.md",
+      "vendor": "OpenAI",
+      "tokens": 703,
+      "totalTokensInCorpus": 703,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.1-professional.md",
+      "vendor": "OpenAI",
+      "tokens": 212,
+      "totalTokensInCorpus": 212,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.2-mini-free-account.md",
+      "vendor": "OpenAI",
+      "tokens": 1058,
+      "totalTokensInCorpus": 1058,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.020697167755991286
+    },
+    {
+      "file": "OpenAI/gpt-5.2-thinking.md",
+      "vendor": "OpenAI",
+      "tokens": 15942,
+      "totalTokensInCorpus": 15942,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.0015282002942142991
+    },
+    {
+      "file": "OpenAI/gpt-5.3-chat-api.md",
+      "vendor": "OpenAI",
+      "tokens": 450,
+      "totalTokensInCorpus": 450,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.3-codex-api.md",
+      "vendor": "OpenAI",
+      "tokens": 45,
+      "totalTokensInCorpus": 45,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.3-instant.md",
+      "vendor": "OpenAI",
+      "tokens": 17370,
+      "totalTokensInCorpus": 17370,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "volatile-id",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.0013810519670125476
+    },
+    {
+      "file": "OpenAI/gpt-5.4-api.md",
+      "vendor": "OpenAI",
+      "tokens": 200,
+      "totalTokensInCorpus": 200,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "ordering",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.4-thinking.md",
+      "vendor": "OpenAI",
+      "tokens": 21970,
+      "totalTokensInCorpus": 21970,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.000906525968404015
+    },
+    {
+      "file": "OpenAI/gpt-5.5-api.md",
+      "vendor": "OpenAI",
+      "tokens": 200,
+      "totalTokensInCorpus": 200,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "ordering",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.5-instant.md",
+      "vendor": "OpenAI",
+      "tokens": 20377,
+      "totalTokensInCorpus": 20377,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.001261271880709569
+    },
+    {
+      "file": "OpenAI/gpt-5.5-pro-api.md",
+      "vendor": "OpenAI",
+      "tokens": 191,
+      "totalTokensInCorpus": 191,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "ordering",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenAI/gpt-5.5-thinking.md",
+      "vendor": "OpenAI",
+      "tokens": 26509,
+      "totalTokensInCorpus": 26509,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        },
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 1,
+      "hitRate": 0.0009747765777577966
+    },
+    {
+      "file": "OpenAI/gpt-5.6-sol.md",
+      "vendor": "OpenAI",
+      "tokens": 28786,
+      "totalTokensInCorpus": 28786,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.0006542903314807891
+    },
+    {
+      "file": "OpenAI/tool-advanced-memory.md",
+      "vendor": "OpenAI",
+      "tokens": 1583,
+      "totalTokensInCorpus": 1583,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "OpenAI/tool-deep-research.md",
+      "vendor": "OpenAI",
+      "tokens": 516,
+      "totalTokensInCorpus": 516,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "OpenCode/opencode.md",
+      "vendor": "OpenCode",
+      "tokens": 5251,
+      "totalTokensInCorpus": 5251,
+      "findings": [
+        {
+          "id": "mutable-memory-in-prefix",
+          "severity": "high",
+          "count": 1
+        }
+      ],
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "hitRate": 0.9175024263992235
+    },
+    {
+      "file": "Perplexity/comet-browser-assistant.md",
+      "vendor": "Perplexity",
+      "tokens": 5367,
+      "totalTokensInCorpus": 5367,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Perplexity/deep-research.md",
+      "vendor": "Perplexity",
+      "tokens": 6760,
+      "totalTokensInCorpus": 6760,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Perplexity/perplexity-ai.md",
+      "vendor": "Perplexity",
+      "tokens": 1773,
+      "totalTokensInCorpus": 1773,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Perplexity/perplexity-computer.md",
+      "vendor": "Perplexity",
+      "tokens": 8503,
+      "totalTokensInCorpus": 8503,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Perplexity/voice-assistant.md",
+      "vendor": "Perplexity",
+      "tokens": 444,
+      "totalTokensInCorpus": 444,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        },
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 2,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Pi/instructions.md",
+      "vendor": "Pi",
+      "tokens": 616,
+      "totalTokensInCorpus": 616,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "Qwen/qwen3.6-plus.md",
+      "vendor": "Qwen",
+      "tokens": 1920,
+      "totalTokensInCorpus": 1920,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "Qwen/qwen3.8-max.md",
+      "vendor": "Qwen",
+      "tokens": 689,
+      "totalTokensInCorpus": 689,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "xAI/grok-3.md",
+      "vendor": "xAI",
+      "tokens": 883,
+      "totalTokensInCorpus": 883,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "xAI/grok-4-with-new-safety-instructions.md",
+      "vendor": "xAI",
+      "tokens": 4616,
+      "totalTokensInCorpus": 4616,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "xAI/grok-4.1-beta.md",
+      "vendor": "xAI",
+      "tokens": 3335,
+      "totalTokensInCorpus": 3335,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "xAI/grok-4.2.md",
+      "vendor": "xAI",
+      "tokens": 4339,
+      "totalTokensInCorpus": 4339,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "xAI/grok-4.3-beta.md",
+      "vendor": "xAI",
+      "tokens": 6728,
+      "totalTokensInCorpus": 6728,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "xAI/grok-4.5.md",
+      "vendor": "xAI",
+      "tokens": 8786,
+      "totalTokensInCorpus": 8786,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "xAI/grok-4.6.md",
+      "vendor": "xAI",
+      "tokens": 8879,
+      "totalTokensInCorpus": 8879,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "xAI/grok-4.md",
+      "vendor": "xAI",
+      "tokens": 2850,
+      "totalTokensInCorpus": 2850,
+      "findings": [],
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.92
+    },
+    {
+      "file": "xAI/grok-account.md",
+      "vendor": "xAI",
+      "tokens": 659,
+      "totalTokensInCorpus": 659,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "xAI/grok-api.md",
+      "vendor": "xAI",
+      "tokens": 162,
+      "totalTokensInCorpus": 162,
+      "findings": [
+        {
+          "id": "below-minimum",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0
+    },
+    {
+      "file": "xAI/grok-bot.md",
+      "vendor": "xAI",
+      "tokens": 73784,
+      "totalTokensInCorpus": 73784,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 2
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "xAI/grok-build.md",
+      "vendor": "xAI",
+      "tokens": 33629,
+      "totalTokensInCorpus": 33629,
+      "findings": [
+        {
+          "id": "prefix-bloat",
+          "severity": "medium",
+          "count": 2
+        }
+      ],
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "hitRate": 0.6
+    },
+    {
+      "file": "xAI/grok-expert.md",
+      "vendor": "xAI",
+      "tokens": 5298,
+      "totalTokensInCorpus": 5298,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.03541170871013799
+    },
+    {
+      "file": "xAI/grok-personas.md",
+      "vendor": "xAI",
+      "tokens": 4844,
+      "totalTokensInCorpus": 4844,
+      "findings": [
+        {
+          "id": "dynamic-timestamp",
+          "severity": "critical",
+          "count": 1
+        }
+      ],
+      "critical": 1,
+      "high": 0,
+      "medium": 0,
+      "hitRate": 0.3010698126770688
+    }
+  ]
+}

@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#F6F1E8">
+<title>PrefixAudit — find the line in your prompt that's costing you thousands</title>
+<meta name="description" content="Free prompt cache auditor. Paste your system prompt, find the cache-break that's silently re-billing your cached prefix at full price, and see the monthly dollar cost. Runs entirely in your browser.">
+<meta property="og:title" content="PrefixAudit — your prompt cache is probably broken">
+<meta property="og:description" content="26% of AI spend is wasted. The #1 cause is a prompt prefix that silently stops caching. Paste yours, find it in 10 seconds.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="__SITE__/og.png">
+<link rel="canonical" href="__SITE__/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PrefixAudit — your prompt cache is probably broken">
+<meta name="twitter:description" content="Paste a system prompt. Find the line that is silently re-billing your cached prefix at full price. Free, in-browser, no API calls.">
+<meta name="twitter:image" content="__SITE__/og.png">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PrefixAudit",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any (browser)",
+  "url": "__SITE__/",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "description": "Free prompt cache auditor. Paste a system prompt or API request and find the cache-break that is silently re-billing your cached prefix at full price, with a modelled monthly dollar cost.",
+  "featureList": [
+    "14 static-analysis rules for prompt-cache breakers",
+    "Cross-provider cost model for Anthropic, OpenAI, Gemini and DeepSeek",
+    "Cache breakpoint placement analysis on raw API request payloads",
+    "One-click auto-fix that reorders the prefix",
+    "Zero-dependency CLI and GitHub Action for CI gating"
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why is my prompt cache hit rate zero?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Usually one of three things. (1) The prefix is below the provider's minimum cacheable length, so caching is silently skipped with no error — 1,024 tokens for most Anthropic models, 4,096 for Haiku 4.5 and Opus 4.6/4.5, 2,048 for Gemini. (2) Volatile content such as a rendered date or request ID sits inside the cached prefix, so every request produces different bytes. (3) On Anthropic, no cache_control marker is attached to the system block or last tool definition. In a study of 236 production system prompts, 28.8% were below the cache minimum and 55.5% contained a critical cache-breaking pattern."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the minimum number of tokens for prompt caching?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "It is per-model, and on Anthropic it runs backwards from price: 512 tokens for Fable 5 and Mythos 5, 1,024 for Opus 4.8 and Sonnet 5/4.6/4.5, 2,048 for Opus 4.7 and Haiku 3.5/3, and 4,096 for Haiku 4.5 and Opus 4.6/4.5. Gemini's floor is 2,048. Below the floor the cache_control marker is ignored and you pay full price — and if you marked the block you also pay a 1.25x write premium with zero reads."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How much does prompt caching save?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cached input bills at 0.1x the base price on Anthropic and OpenAI, a 90% discount, and cache writes cost 1.25x. Breakeven on the 5-minute TTL tier is about 0.28 reads per cached write; on the 1-hour tier, where writes cost 2x, it is about 1.11 reads. Below that, caching costs you money. The savings you actually see depend entirely on your hit rate, which is a function of prefix ordering rather than any setting."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does PrefixAudit send my prompt anywhere?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The auditor is a single static HTML file containing a zero-dependency analysis engine. It runs entirely in your browser, makes no network requests, uses no API keys, and there is no server to send anything to. This is structural, not a policy promise."
+      }
+    }
+  ]
+}
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23211D1A'/%3E%3Cpath d='M8 10h16M8 16h10M8 22h13' stroke='%23B86B4B' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ivory:#F6F1E8; --parch:#EFE7DA; --card:#FBF8F1;
+    --esp:#211D1A; --esp2:#2A2521; --esp3:#1A1714;
+    --ink:#211D1A; --ink2:#706860; --ink3:#9A9086;
+    --terra:#B86B4B; --terra2:#A05a3d; --lav:#7564A8; --gold:#C9A86A;
+    --ok:#4E806B; --err:#B85C55;
+    --warn:#C9A86A; --crit:#B85C55; --info:#7564A8;
+    --line:#DCD2C5; --lined:#3A332D;
+    --dtext:#F5EFE5; --dtext2:#B4A99C;
+    --serif:"Instrument Serif","Playfair Display","Cormorant Garamond","Iowan Old Style",Georgia,"Times New Roman",serif;
+    --sans:"Inter","Geist","Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    --mono:"IBM Plex Mono","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --r6:6px; --r10:10px; --r14:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;padding:0}
+  body{background:var(--ivory);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  /* paper grain — data URI, zero network */
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:80;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  a{color:var(--terra);text-decoration:none}
+  a:hover{text-decoration:underline}
+  ::selection{background:rgba(184,107,75,.22)}
+  :focus-visible{outline:2px solid var(--terra);outline-offset:3px;border-radius:2px}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:var(--ivory)}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:2px solid var(--ivory)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--ink3)}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+  .micro{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink2)}
+  .micro.t{color:var(--terra)}
+
+  /* ---------------- header ---------------- */
+  header{position:fixed;inset:0 0 auto 0;z-index:50;transition:background .3s,box-shadow .3s,border-color .3s;
+    border-bottom:1px solid transparent;background:transparent}
+  header.scrolled{background:rgba(246,241,232,.82);backdrop-filter:blur(10px);
+    border-color:var(--line);box-shadow:0 1px 0 rgba(33,29,26,.04),0 8px 28px rgba(33,29,26,.05)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px;gap:18px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em;font-size:15.5px;color:var(--ink)}
+  .logo:hover{text-decoration:none}
+  .logo svg{width:22px;height:22px}
+  nav{display:flex;gap:26px;font-size:13px;color:var(--ink2);align-items:center}
+  nav a{color:var(--ink2);position:relative;transition:color .15s}
+  nav a:hover{color:var(--ink);text-decoration:none}
+  nav a::after{content:"";position:absolute;left:0;right:100%;bottom:-6px;height:1px;background:var(--terra);transition:right .25s ease}
+  nav a:hover::after{right:0}
+  @media(max-width:900px){nav a.hidesm{display:none}}
+  @media(max-width:640px){nav{display:none}}
+
+  /* ---------------- buttons ---------------- */
+  .btn{cursor:pointer;font-family:var(--sans);font-weight:500;font-size:13.5px;color:var(--ink);
+    background:transparent;border:1px solid var(--line);border-radius:var(--r6);padding:8px 14px;
+    transition:transform .18s cubic-bezier(.2,.7,.3,1),box-shadow .25s,background .2s,border-color .2s,color .2s;
+    position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{border-color:var(--ink3);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0) scale(.98)}
+  .btn.primary{background:var(--esp);color:var(--dtext);border-color:var(--esp)}
+  .btn.primary:hover{background:var(--esp2);box-shadow:0 10px 26px rgba(33,29,26,.18)}
+  .btn.primary .ar{transition:transform .2s;display:inline-block}
+  .btn.primary:hover .ar{transform:translateX(3px)}
+  .btn.terra{background:var(--terra);border-color:var(--terra);color:#FBF3EC}
+  .btn.terra:hover{background:var(--terra2);border-color:var(--terra2);box-shadow:0 10px 26px rgba(184,107,75,.25)}
+  .btn.lg{padding:13px 22px;font-size:14.5px;border-radius:var(--r10)}
+  .btn.sm{padding:5px 10px;font-size:12px}
+  .btn.ghostd{border-color:var(--lined);color:var(--dtext2);background:transparent}
+  .btn.ghostd:hover{color:var(--dtext);border-color:var(--ink3)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  /* ---------------- hero ---------------- */
+  .hero{padding:158px 0 34px;position:relative}
+  .herogrid{display:grid;grid-template-columns:1fr 250px;gap:48px;align-items:end}
+  @media(max-width:960px){.herogrid{grid-template-columns:1fr}}
+  .eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:30px}
+  .eyebrow .micro{color:var(--ink2)}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--terra)}
+  h1{font-family:var(--serif);font-weight:400;font-size:clamp(46px,7.2vw,96px);line-height:1.0;
+    letter-spacing:-.015em;margin:0 0 26px;color:var(--ink)}
+  h1 em{font-style:italic;color:var(--terra)}
+  .hero-sub{max-width:560px;color:var(--ink2);font-size:16.5px;margin:0 0 34px}
+  .hero-side{border-left:1px solid var(--line);padding-left:22px;display:flex;flex-direction:column;gap:14px}
+  .hero-side div b{display:block;font-family:var(--mono);font-weight:500;font-size:13px;color:var(--ink);letter-spacing:.02em}
+  .hero-side div i{font-style:normal;font-size:11.5px;color:var(--ink3)}
+  @media(max-width:960px){.hero-side{display:none}}
+
+  /* ---------------- instrument (hero visual) ---------------- */
+  .instr{margin:64px 0 0;border:1px solid var(--line);border-radius:var(--r14);background:var(--card);
+    box-shadow:0 1px 0 rgba(33,29,26,.03),0 24px 60px rgba(33,29,26,.06);overflow:hidden}
+  .instr-h{display:flex;justify-content:space-between;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .instr-h .steps{display:flex;gap:18px;flex-wrap:wrap}
+  .instr-h .steps span{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--ink3)}
+  .instr-h .steps span.on{color:var(--terra)}
+  .instr-b{padding:26px 20px 24px;position:relative}
+  .stream{display:flex;gap:5px;flex-wrap:nowrap;overflow-x:auto;padding:6px 2px 14px;scrollbar-width:none}
+  .stream::-webkit-scrollbar{display:none}
+  .tok{flex:0 0 auto;font-family:var(--mono);font-size:11.5px;color:var(--ink2);background:var(--parch);
+    border:1px solid var(--line);border-radius:4px;padding:5px 8px;opacity:0;transform:translateY(8px);
+    transition:opacity .4s,transform .4s}
+  .tok.dim{color:var(--ink3);background:transparent;border-style:dashed}
+  .tok.vol{color:#7C3A2D;background:rgba(184,107,75,.12);border-color:var(--terra)}
+  .instr.on .tok{opacity:1;transform:none}
+  .instr.on .tok:nth-child(1){transition-delay:.05s}.instr.on .tok:nth-child(2){transition-delay:.1s}
+  .instr.on .tok:nth-child(3){transition-delay:.15s}.instr.on .tok:nth-child(4){transition-delay:.2s}
+  .instr.on .tok:nth-child(5){transition-delay:.25s}.instr.on .tok:nth-child(6){transition-delay:.3s}
+  .instr.on .tok:nth-child(7){transition-delay:.35s}.instr.on .tok:nth-child(8){transition-delay:.4s}
+  .instr.on .tok:nth-child(9){transition-delay:.45s}.instr.on .tok:nth-child(10){transition-delay:.5s}
+  .instr.on .tok:nth-child(11){transition-delay:.55s}.instr.on .tok:nth-child(12){transition-delay:.6s}
+  .instr.on .tok:nth-child(n+13){transition-delay:.7s}
+  .bpline{position:absolute;top:18px;bottom:64px;left:min(46%,430px);width:1px;background:var(--terra);
+    transform:scaleY(0);transform-origin:top;transition:transform .7s .9s cubic-bezier(.2,.7,.3,1)}
+  .bpline::before{content:"BREAKPOINT";position:absolute;top:-14px;left:-34px;font-family:var(--mono);
+    font-size:9px;letter-spacing:.16em;color:var(--terra)}
+  .instr.on .bpline{transform:scaleY(1)}
+  .reads{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line)}
+  @media(max-width:760px){.reads{grid-template-columns:1fr}}
+  .read{background:var(--card);padding:14px 18px;opacity:0;transform:translateY(6px);transition:opacity .5s,transform .5s}
+  .instr.on .read:nth-child(1){opacity:1;transform:none;transition-delay:1.5s}
+  .instr.on .read:nth-child(2){opacity:1;transform:none;transition-delay:1.8s}
+  .instr.on .read:nth-child(3){opacity:1;transform:none;transition-delay:2.1s}
+  .read i{font-style:normal;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--ink3);display:block;margin-bottom:5px}
+  .read b{font-size:14px;font-weight:500;color:var(--ink)}
+  .read b.terra{color:var(--terra)} .read b.err{color:var(--err)} .read b.okc{color:var(--ok)}
+
+  /* ---------------- trust strip ---------------- */
+  .strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:84px}
+  .strip .in{display:grid;grid-template-columns:repeat(4,1fr)}
+  @media(max-width:820px){.strip .in{grid-template-columns:repeat(2,1fr)}}
+  .sstat{padding:30px 26px;border-left:1px solid var(--line)}
+  .sstat:first-child{border-left:0}
+  @media(max-width:820px){.sstat:nth-child(3){border-left:0}.sstat{border-top:1px solid var(--line)}.sstat:nth-child(-n+2){border-top:0}}
+  .sstat b{display:block;font-family:var(--serif);font-weight:400;font-size:clamp(34px,4vw,52px);line-height:1;letter-spacing:-.01em;color:var(--ink)}
+  .sstat b i{font-style:italic;color:var(--terra);font-size:.6em}
+  .sstat i{font-style:normal;display:block;margin-top:8px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink2)}
+
+  /* ---------------- sections ---------------- */
+  section{position:relative}
+  .sec{padding:110px 0}
+  .sec.parch{background:var(--parch)}
+  .sec.dark{background:var(--esp);color:var(--dtext)}
+  .sechead{max-width:760px;margin-bottom:56px}
+  h2{font-family:var(--serif);font-weight:400;font-size:clamp(30px,4.4vw,52px);line-height:1.08;letter-spacing:-.015em;margin:14px 0 16px}
+  h2 em{font-style:italic;color:var(--terra)}
+  .sec.dark h2 em{color:var(--gold)}
+  .secp{color:var(--ink2);font-size:16px;max-width:640px;margin:0}
+  .sec.dark .secp{color:var(--dtext2)}
+
+  /* reveal */
+  .rv{opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+  .rv.on{opacity:1;transform:none}
+
+  /* ---------------- how it works ---------------- */
+  .how{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line)}
+  @media(max-width:900px){.how{grid-template-columns:1fr}}
+  .step{padding:38px 30px 44px;border-left:1px solid var(--line)}
+  .step:first-child{border-left:0}
+  @media(max-width:900px){.step{border-left:0;border-top:1px solid var(--line)}.step:first-child{border-top:0}}
+  .step .n{font-family:var(--mono);font-size:11px;color:var(--terra);letter-spacing:.16em}
+  .step h3{font-family:var(--serif);font-weight:400;font-size:26px;margin:10px 0 10px;letter-spacing:-.01em}
+  .step p{color:var(--ink2);font-size:14px;margin:0 0 26px}
+  .dia{height:74px;border:1px solid var(--line);border-radius:var(--r10);background:var(--card);position:relative;overflow:hidden}
+  .dia .caret{position:absolute;left:14px;top:16px;width:1px;height:18px;background:var(--terra);animation:blink 1.1s steps(1) infinite}
+  .dia .l1,.dia .l2{position:absolute;left:14px;height:1px;background:var(--line)}
+  .dia .l1{top:24px;width:64%}.dia .l2{top:34px;width:42%}
+  .dia .l3{top:44px;width:52%}
+  @keyframes blink{50%{opacity:0}}
+  .dia .tk{position:absolute;top:22px;height:26px;border-radius:4px;border:1px solid var(--line);background:var(--parch)}
+  .dia .tk.vol{border-color:var(--terra);background:rgba(184,107,75,.12)}
+  .dia .vl{position:absolute;top:10px;bottom:10px;width:1px;background:var(--terra)}
+  .dia .mv{position:absolute;top:22px;height:26px;border-radius:4px;border:1px solid var(--ok);background:rgba(78,128,107,.12);
+    animation:slideR 3.2s cubic-bezier(.2,.7,.3,1) infinite}
+  @keyframes slideR{0%{left:18%;opacity:0}18%{opacity:1}55%{left:74%;opacity:1}100%{left:74%;opacity:0}}
+
+  /* ---------------- auditor ---------------- */
+  .agrid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+  @media(max-width:1000px){.agrid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r14);overflow:hidden;
+    box-shadow:0 1px 0 rgba(33,29,26,.03),0 18px 44px rgba(33,29,26,.05)}
+  .panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;
+    border-bottom:1px solid var(--line);background:var(--parch);flex-wrap:wrap}
+  .panel-h h3{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink2);font-weight:500}
+  .panel-b{padding:18px}
+  select,button:not(.btn),input[type=number]{font-family:var(--sans);font-size:13px;color:var(--ink);
+    background:var(--ivory);border:1px solid var(--line);border-radius:var(--r6);padding:7px 10px;outline:none;transition:border-color .15s}
+  select:focus,input[type=number]:focus{border-color:var(--terra)}
+  label.f{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);display:block;margin:0 0 5px}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-bottom:12px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);cursor:pointer;
+    padding:7px 10px;border:1px solid var(--line);border-radius:var(--r6);background:var(--ivory);user-select:none;transition:border-color .15s}
+  .chk:hover{border-color:var(--ink3)}
+  .chk input{accent-color:var(--terra);margin:0}
+  textarea{width:100%;min-height:300px;resize:vertical;font-family:var(--mono);font-size:12.5px;line-height:1.7;
+    color:var(--ink);background:var(--ivory);border:1px solid var(--line);border-radius:var(--r10);padding:14px;
+    outline:none;tab-size:2;transition:border-color .15s,box-shadow .2s}
+  textarea:focus{border-color:var(--terra);box-shadow:0 0 0 3px rgba(184,107,75,.12)}
+  textarea::placeholder{color:var(--ink3)}
+  code{font-family:var(--mono);font-size:12px;background:var(--parch);border:1px solid var(--line);padding:1px 5px;border-radius:4px;color:var(--terra2)}
+
+  /* verdict */
+  .verdict{display:grid;grid-template-columns:110px 1fr;gap:18px;align-items:center;padding:18px;border-bottom:1px solid var(--line)}
+  .score{width:110px;height:110px;border-radius:50%;display:grid;place-items:center;position:relative;
+    background:conic-gradient(var(--sc) calc(var(--p)*1%),var(--line) 0)}
+  .score::after{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--card)}
+  .score span{position:relative;z-index:1;text-align:center;line-height:1}
+  .score b{display:block;font-family:var(--serif);font-size:32px;font-weight:400;letter-spacing:-.01em}
+  .score i{font-style:normal;font-size:10px;color:var(--ink3);font-family:var(--mono);letter-spacing:.1em}
+  .vtext h2{margin:0 0 6px;font-size:22px}
+  .vtext p{margin:0;color:var(--ink2);font-size:13.5px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+  @media(max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--card);padding:12px 14px}
+  .stat b{display:block;font-family:var(--mono);font-size:17px;font-weight:500;letter-spacing:-.01em}
+  .stat i{font-style:normal;font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.14em;font-family:var(--mono)}
+  .stat.money b{color:var(--err)}
+  .stat.good b{color:var(--ok)}
+
+  /* findings */
+  .badge{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--line);
+    color:var(--ink2);white-space:nowrap;background:var(--ivory);letter-spacing:.08em}
+  .badge.ok{color:var(--ok);border-color:rgba(78,128,107,.4);background:rgba(78,128,107,.08)}
+  .find{border-bottom:1px solid var(--line)}
+  .find:last-child{border-bottom:0}
+  .fh{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;cursor:pointer;transition:background .15s}
+  .fh:hover{background:var(--parch)}
+  .tag{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.12em;padding:3px 7px;border-radius:3px;
+    flex-shrink:0;margin-top:2px;text-transform:uppercase}
+  .t-critical{background:rgba(181,92,85,.1);color:var(--err);border:1px solid rgba(181,92,85,.35)}
+  .t-high{background:rgba(201,168,106,.12);color:#8A6D33;border:1px solid rgba(201,168,106,.5)}
+  .t-medium{background:rgba(117,100,168,.08);color:var(--lav);border:1px solid rgba(117,100,168,.3)}
+  .t-low,.t-info{background:rgba(112,104,96,.08);color:var(--ink2);border:1px solid var(--line)}
+  .fh h4{margin:0;font-size:14.5px;font-weight:500;letter-spacing:-.01em}
+  .fh .ln{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink3);flex-shrink:0}
+  .fbody{padding:0 16px 16px 16px;display:none}
+  .find.open .fbody{display:block}
+  .why{color:var(--ink2);font-size:13.5px;margin:0 0 10px}
+  .ev{font-family:var(--mono);font-size:11.5px;background:var(--ivory);border:1px solid var(--line);
+    border-left:2px solid var(--err);border-radius:var(--r6);padding:8px 10px;margin:5px 0;color:var(--ink2);
+    overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+  .ev .ln{color:var(--ink3);margin-right:8px}
+  .fix{background:rgba(78,128,107,.07);border:1px solid rgba(78,128,107,.3);border-radius:var(--r6);
+    padding:10px 12px;font-size:13px;color:#3D6454;margin-top:10px}
+  .fix b{color:var(--ok);font-size:9.5px;font-family:var(--mono);letter-spacing:.14em;display:block;margin-bottom:3px}
+  .empty{padding:28px 16px;text-align:center;color:var(--ink3);font-size:13.5px}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{padding:8px 4px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left;color:var(--ink2)}
+  th{color:var(--ink3);font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:500;font-family:var(--mono)}
+  td{font-family:var(--mono)}
+  tr:last-child td{border-bottom:0}
+  tr.total td{font-weight:500;font-size:14.5px;border-top:1px solid var(--line)}
+  .save{color:var(--ok)} .bad{color:var(--err)}
+  .note{font-size:11.5px;color:var(--ink3);margin-top:10px;line-height:1.6}
+  .sec.dark .note{color:var(--dtext2)}
+  pre{margin:0;font-family:var(--mono);font-size:11.5px;line-height:1.7;background:var(--ivory);border:1px solid var(--line);
+    border-radius:var(--r6);padding:12px;overflow:auto;max-height:250px;color:var(--ink2);white-space:pre-wrap;word-break:break-word}
+
+  /* ---------------- rules ledger ---------------- */
+  .ledger{border-top:1px solid var(--line)}
+  .mini{display:grid;grid-template-columns:64px 110px 1fr;gap:20px;padding:24px 10px;border-bottom:1px solid var(--line);
+    align-items:start;transition:background .2s;counter-increment:rule;background:transparent}
+  .mini:hover{background:var(--card)}
+  .mini::before{content:counter(rule,decimal-leading-zero);font-family:var(--mono);font-size:12px;color:var(--terra);padding-top:3px}
+  .ledger{counter-reset:rule}
+  .mini .tag{margin:0}
+  .mini h4{margin:0 0 6px;font-family:var(--serif);font-weight:400;font-size:21px;letter-spacing:-.01em}
+  .mini p{margin:0;color:var(--ink2);font-size:13.5px;max-width:760px}
+  .mini .fixline{margin-top:8px;font-size:12.5px;color:#3D6454}
+  .mini .fixline b{color:var(--ok);font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;margin-right:6px}
+  @media(max-width:700px){.mini{grid-template-columns:44px 1fr;gap:12px}.mini .tag{grid-column:2}.mini>div{grid-column:1/-1;padding-left:56px}}
+
+  /* ---------------- developers / console ---------------- */
+  .console{border:1px solid var(--lined);border-radius:var(--r14);background:var(--esp3);overflow:hidden;
+    box-shadow:0 30px 70px rgba(0,0,0,.35)}
+  .console-h{display:flex;gap:7px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--lined)}
+  .console-h span{width:9px;height:9px;border-radius:50%;background:var(--lined)}
+  .console-h b{margin-left:8px;font-family:var(--mono);font-size:10.5px;color:var(--dtext2);font-weight:400;letter-spacing:.08em}
+  .console pre{background:transparent;border:0;max-height:none;color:var(--dtext2);padding:18px 20px;font-size:12.5px}
+  .console .p{color:var(--gold)} .console .crit{color:#D98880} .console .wrn{color:var(--gold)}
+  .console .lavc{color:#A99CD1} .console .okc{color:#8FBFA9} .console .dim{color:#6E6459}
+  .console .ln{opacity:0;animation:lineIn .4s forwards}
+  .console.on .ln:nth-child(1){animation-delay:.2s}.console.on .ln:nth-child(2){animation-delay:.9s}
+  .console.on .ln:nth-child(3){animation-delay:1.4s}.console.on .ln:nth-child(4){animation-delay:1.9s}
+  .console.on .ln:nth-child(5){animation-delay:2.4s}.console.on .ln:nth-child(6){animation-delay:2.9s}
+  @keyframes lineIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .caret2{display:inline-block;width:7px;height:13px;background:var(--gold);vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+  .flaggrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--lined);
+    border:1px solid var(--lined);border-radius:var(--r10);overflow:hidden;margin-top:22px}
+  .flag{background:var(--esp);padding:14px 16px}
+  .flag b{font-family:var(--mono);font-size:12px;color:var(--gold);font-weight:500;display:block;margin-bottom:4px}
+  .flag i{font-style:normal;font-size:12px;color:var(--dtext2)}
+
+  /* pipeline */
+  .pipe{display:flex;align-items:stretch;gap:0;margin-top:64px;border:1px solid var(--lined);border-radius:var(--r14);overflow:hidden}
+  @media(max-width:900px){.pipe{flex-direction:column}}
+  .pnode{flex:1;padding:20px 18px;border-left:1px solid var(--lined);position:relative;opacity:.35;transition:opacity .5s}
+  .pnode:first-child{border-left:0}
+  .pipe.on .pnode{opacity:1}
+  .pipe.on .pnode:nth-child(1){transition-delay:.1s}.pipe.on .pnode:nth-child(2){transition-delay:.5s}
+  .pipe.on .pnode:nth-child(3){transition-delay:.9s}.pipe.on .pnode:nth-child(4){transition-delay:1.3s}
+  .pipe.on .pnode:nth-child(5){transition-delay:1.7s}
+  @media(max-width:900px){.pnode{border-left:0;border-top:1px solid var(--lined)}.pnode:first-child{border-top:0}}
+  .pnode .n{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--dtext2)}
+  .pnode h4{margin:8px 0 6px;font-size:14.5px;font-weight:500;color:var(--dtext)}
+  .pnode p{margin:0;font-size:12px;color:var(--dtext2)}
+  .pnode.alert h4{color:#D98880}
+  .pnode.alert .n{color:#D98880}
+
+  /* ---------------- pricing ---------------- */
+  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+  @media(max-width:940px){.tiers{grid-template-columns:1fr}}
+  .tier{border:1px solid var(--line);border-radius:var(--r14);background:var(--card);padding:30px 28px;display:flex;flex-direction:column}
+  .tier .micro{margin-bottom:14px}
+  .tier .price{font-family:var(--serif);font-size:44px;line-height:1;letter-spacing:-.01em;margin:0 0 4px}
+  .tier .price i{font-style:italic;font-size:.45em;color:var(--ink2)}
+  .tier ul{list-style:none;margin:22px 0 26px;padding:0;flex:1}
+  .tier li{padding:9px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink2)}
+  .tier li::before{content:"—";color:var(--terra);margin-right:10px}
+  .tier.hot{background:var(--esp);border-color:var(--esp);color:var(--dtext);box-shadow:0 30px 70px rgba(33,29,26,.22)}
+  .tier.hot .price{color:var(--dtext)}
+  .tier.hot .price i{color:var(--dtext2)}
+  .tier.hot li{border-color:var(--lined);color:var(--dtext2)}
+  .tier.hot li::before{color:var(--gold)}
+  .tier.hot .micro{color:var(--gold)}
+
+  /* ---------------- final cta ---------------- */
+  .final{padding:130px 0;position:relative;overflow:hidden}
+  .final h2{font-size:clamp(36px,5.6vw,72px);max-width:900px}
+  .final p{color:var(--dtext2);font-size:17px;max-width:520px;margin:0 0 38px}
+  .diagline{position:absolute;left:0;right:0;bottom:86px;height:1px;opacity:.5;
+    background:linear-gradient(90deg,transparent,var(--gold),var(--terra),transparent);
+    background-size:200% 100%;animation:sheen 9s linear infinite}
+  @keyframes sheen{from{background-position:200% 0}to{background-position:-200% 0}}
+
+  /* ---------------- footer ---------------- */
+  footer{background:var(--esp3);color:var(--dtext2);padding:64px 0 34px;border-top:1px solid var(--lined)}
+  .fcols{display:grid;grid-template-columns:2fr repeat(5,1fr);gap:26px}
+  @media(max-width:940px){.fcols{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:560px){.fcols{grid-template-columns:repeat(2,1fr)}}
+  .fcols h5{margin:0 0 14px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dtext2);font-weight:500}
+  .fcols a{display:block;color:var(--dtext2);font-size:13px;margin-bottom:9px}
+  .fcols a:hover{color:var(--dtext);text-decoration:none}
+  .fbrand p{font-size:12.5px;line-height:1.7;max-width:280px}
+  .fbottom{border-top:1px solid var(--lined);margin-top:48px;padding-top:22px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#6E6459}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--esp);
+    color:var(--dtext);padding:10px 18px;border-radius:var(--r6);font-size:13px;opacity:0;pointer-events:none;
+    transition:.25s;z-index:100;border:1px solid var(--lined)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation:none!important;transition:none!important}
+    html{scroll-behavior:auto}
+    .rv,.tok,.read{opacity:1;transform:none}
+    .bpline{transform:scaleY(1)}
+    .pnode{opacity:1}
+    .console .ln{opacity:1}
+  }
+  /* ---------- platform-grade pass ---------- */
+  .aud-kicker{display:flex;justify-content:space-between;align-items:baseline;gap:18px;flex-wrap:wrap;margin:58px 0 16px}
+  .privline{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ok)}
+  .stages{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-family:var(--mono);font-size:11px;letter-spacing:.14em;margin:6px 0 20px}
+  .stages i{color:var(--ink3);font-style:normal}
+  .stages .e{color:var(--err)}
+  .stages .t2{color:var(--terra)}
+  .chip{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;border:1px solid;border-radius:999px;padding:2px 9px;margin:4px 0 6px}
+  .chip.avail{color:var(--ok);border-color:var(--ok)}
+  .chip.road{color:var(--ink3);border-color:var(--line)}
+  .dia{position:relative}
+  .dia .lnk{position:absolute;top:-4px;bottom:-4px;left:38%;width:1px;background:var(--terra)}
+  .dia .gate{position:absolute;left:41%;top:4px;bottom:4px;width:2px;background:var(--err)}
+  .dia .spark{position:absolute;left:8%;right:8%;top:46%;height:2px;background:linear-gradient(90deg,var(--ok),var(--gold))}
+  .pipesecond{margin:30px 0 4px}
+  .okpipe .pnode.ok{border-color:var(--ok)}
+  .okpipe .pnode.ok h4{color:var(--ok)}
+  .bench{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r14);overflow:hidden;margin:36px 0 28px}
+  .bench>div{background:var(--card);padding:26px 26px 22px}
+  .bench b{font-family:var(--serif);font-size:44px;font-weight:400;display:block;line-height:1.1}
+  .bench i{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--ink2);font-style:normal;text-transform:uppercase}
+  .acc{border-top:1px solid var(--line)}
+  .acc:last-child{border-bottom:1px solid var(--line)}
+  .acc summary{cursor:pointer;padding:16px 4px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;display:flex;justify-content:space-between;gap:12px}
+  .acc summary::after{content:"+";color:var(--terra)}
+  .acc[open] summary::after{content:"–"}
+  .acc p{padding:0 4px 18px;color:var(--ink2);max-width:76ch;margin:0}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+  .legend span{font-family:var(--mono);font-size:10px;letter-spacing:.12em;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--ink2)}
+  .ladder{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:36px 0 26px}
+  .ladder .rung{border:1px solid var(--line);border-radius:var(--r10);padding:16px 14px;background:var(--card)}
+  .ladder .rung b{font-family:var(--mono);font-size:11px;letter-spacing:.1em;display:block;margin-bottom:6px}
+  .ladder .rung p{font-size:12.5px;color:var(--ink2);margin:0}
+  .ladder .rung.road{border-style:dashed;background:transparent}
+  .dashprev{border:1px dashed var(--line);border-radius:var(--r14);padding:24px 22px 22px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;position:relative}
+  .dashprev .cell{border:1px solid var(--line);border-radius:var(--r10);padding:14px;min-height:78px;background:var(--card)}
+  .dashprev .cell b{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--ink2);text-transform:uppercase;display:block}
+  .dashprev .cell span{font-family:var(--serif);font-size:26px;color:var(--line)}
+  .dashprev .tag{position:absolute;top:-9px;right:18px;background:var(--ivory);padding:0 10px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--ink2)}
+  @media(max-width:1024px){.ladder{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:900px){.bench{grid-template-columns:1fr 1fr}.dashprev{grid-template-columns:1fr 1fr}.ladder{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.bench{grid-template-columns:1fr}.ladder{grid-template-columns:1fr}.aud-kicker{margin-top:40px}}
+
+  /* ---------- instrument pass ---------- */
+  .editor-wrap{position:relative}
+  .editor-wrap textarea{position:relative;z-index:1;background:transparent}
+  .hlback{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+    font-family:var(--mono);font-size:12.5px;line-height:1.7;padding:14px;tab-size:2;
+    border:1px solid transparent;border-radius:var(--r10)}
+  .hlback .hl{white-space:pre-wrap;word-break:break-word}
+  .hlback .hl.on{background:rgba(184,92,85,.14);box-shadow:inset 2px 0 0 var(--err);border-radius:3px}
+  .cgroup{margin:0 0 12px}
+  .cg-t{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
+  details.cgroup.adv{border:1px solid var(--line);border-radius:var(--r10);padding:0 12px;margin:0 0 10px;background:var(--ivory)}
+  details.cgroup.adv summary{cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);padding:9px 2px;display:flex;justify-content:space-between;gap:10px}
+  details.cgroup.adv summary::after{content:"+";color:var(--terra)}
+  details.cgroup.adv[open] summary::after{content:"–"}
+  details.cgroup.adv .fgrid{margin:4px 0 12px}
+  .ba{border:1px solid var(--line);border-radius:var(--r10);margin:10px 0;overflow:hidden}
+  .ba-row{display:flex;align-items:baseline;gap:12px;padding:10px 14px;font-family:var(--mono);font-size:12px}
+  .ba-row i{font-style:normal;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);width:56px}
+  .ba-row b{font-size:15px}
+  .ba-row span{color:var(--ink2);margin-left:auto}
+  .ba-row.bad{background:rgba(184,92,85,.08)}
+  .ba-row.bad b{color:var(--err)}
+  .ba-row.good{background:rgba(78,128,107,.08)}
+  .ba-row.good b{color:var(--ok)}
+  .badge.crit{color:var(--err);border-color:var(--err)}
+  .devbtns{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px}
+  .ci{max-width:860px}
+  .ci h2{font-family:var(--serif);font-size:clamp(30px,4.4vw,46px);font-weight:400;margin:0 0 14px}
+  .ci p{color:var(--ink2);max-width:74ch}
+  .evline{margin:6px 0 2px}
+  .evline b{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;margin-right:6px}
+  .freqline{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--ink3);margin:8px 0 0;text-transform:uppercase}
+  .ladder{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+
+  /* ---------- polish pass ---------- */
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .tick{animation:rise .35s both}
+  .advhint{color:var(--ink3);letter-spacing:.06em;text-transform:none;margin-left:auto}
+  details.cgroup.adv summary .advhint{font-size:10px}
+  .moved{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px}
+  .mvline{font-family:var(--mono);font-size:11.5px;color:var(--terra2);background:rgba(184,107,75,.08);
+    border-left:2px solid var(--terra);border-radius:0 6px 6px 0;padding:6px 10px;animation:rise .4s both}
+  tr.diff td{border-top:1px dashed var(--line);font-family:var(--mono);font-size:12px;padding-top:10px}
+  tr.diff td.save{color:var(--ok)}
+  details.cgroup.adv summary{transition:color .15s}
+  details.cgroup.adv summary:hover{color:var(--terra)}
+  @media (prefers-reduced-motion:reduce){.mvline,.find,.tick{animation:none}}
+</style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="wrap bar">
+    <a class="logo" href="#top" aria-label="PrefixAudit home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#211D1A"/><path d="M8 10h16M8 16h10M8 22h13" stroke="#B86B4B" stroke-width="2.5" stroke-linecap="round"/></svg>
+      PrefixAudit
+    </a>
+    <nav aria-label="Primary">
+      <a href="#auditor" class="hidesm">Product</a>
+      <a href="#how" class="hidesm">How it works</a>
+      <a href="#rules" class="hidesm">Rules</a>
+      <a href="#developers" class="hidesm">Developers</a>
+      <a href="#research" class="hidesm">Research</a>
+      <a href="#pricing" class="hidesm">Pricing</a>
+      <a href="https://github.com/abbojidevops/prefixaudit" class="hidesm">GitHub</a>
+    </nav>
+    <a class="btn terra" href="#auditor">Run an audit <span class="ar">→</span></a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="herogrid">
+        <div>
+          <div class="eyebrow"><span class="micro">Static analysis for LLM prompt caches</span></div>
+          <h1>Find the line<br>that <em>breaks</em><br>your AI cache.</h1>
+          <p class="hero-sub">A rendered timestamp, a request ID, a scratchpad — one volatile byte inside
+            your cached prefix re-bills everything after it at full price. No provider raises an error.
+            PrefixAudit finds the line, and puts a dollar figure on it.</p>
+          <div class="row">
+            <button class="btn primary lg" onclick="loadSample('broken')">Audit your prompt <span class="ar">→</span></button>
+            <a class="btn lg" href="#developers">View the CLI</a>
+          </div>
+        </div>
+        <div class="hero-side" aria-hidden="true">
+          <div><b>0 uploads</b><i>the audit runs in this tab</i></div>
+          <div><b>0 dependencies</b><i>one static file, no build</i></div>
+          <div><b>14 rules</b><i>from a 236-prompt corpus</i></div>
+          <div><b>4 providers</b><i>Anthropic · OpenAI · Gemini · DeepSeek</i></div>
+        </div>
+      </div>
+
+  <div class="hero-aud rv" id="auditor">
+    <div class="wrap">
+      <div class="aud-kicker">
+        <span class="micro t">The instrument — live, in this tab</span>
+        <span class="privline">Your prompt never leaves your browser · no upload · no API key · no storage · no server-side transmission</span>
+      </div>
+      <div class="agrid">
+        <!-- left: editor -->
+        <div class="panel">
+          <div class="panel-h">
+            <h3>Prompt prefix</h3>
+            <div class="row">
+              <button class="btn sm" onclick="clearAll()">Clear</button>
+              <button class="btn sm" onclick="document.getElementById('filein').click()">Open file</button>
+              <button class="btn sm" onclick="loadSample('broken')">Broken</button>
+              <button class="btn sm" onclick="loadSample('clean')">Clean</button>
+              <button class="btn sm" onclick="loadSample('request')">API request</button>
+              <input type="file" id="filein" accept=".md,.txt,.prompt,.json,.yaml,.yml,.j2,.jinja" style="display:none" onchange="openFile(this)" aria-label="Open prompt file">
+            </div>
+          </div>
+          <div class="panel-b">
+            <div class="cgroup"><span class="cg-t">General</span>
+              <div class="fgrid">
+                <div><label class="f" for="provider">Provider</label><select id="provider" onchange="run()"></select></div>
+              </div>
+            </div>
+            <details class="cgroup adv" id="advset">
+              <summary>Advanced settings <span class="advhint">requests · TTL · economics · cache · user turn</span></summary>
+              <div class="fgrid">
+                <div><label class="f" for="requests">Requests / day</label><input type="number" id="requests" value="1000" min="1" step="100" style="width:100%" onchange="run()"></div>
+                <div><label class="f" for="ttl">Cache TTL</label>
+                  <select id="ttl" onchange="run()"><option value="5m">5 minute</option><option value="1h">1 hour</option></select></div>
+                <div><label class="f" for="base">Base input $/MTok</label><input type="number" id="base" step="0.01" style="width:100%" onchange="run()"></div>
+                <div><label class="f" for="readm">Read multiplier</label><input type="number" id="readm" step="0.01" style="width:100%" onchange="run()"></div>
+                <div><label class="f" for="mintok">Min cacheable tokens</label><input type="number" id="mintok" step="128" style="width:100%" onchange="run()"></div>
+              </div>
+              <div class="row" style="margin-top:10px">
+                <label class="chk" id="bpWrap"><input type="checkbox" id="bp" onchange="run()"> I set <code>cache_control</code></label>
+                <label class="chk"><input type="checkbox" id="logs" onchange="run()"> I log cache-token usage</label>
+              </div>
+              <label class="f" for="user" style="margin-top:12px">User message — the volatile suffix (optional)</label>
+              <textarea id="user" spellcheck="false" style="min-height:76px" placeholder="The per-call user turn. Content here does not affect the cached prefix."></textarea>
+            </details>
+            <span class="badge" id="modebadge" style="display:none"></span>
+            <label class="f" for="prompt">System prompt + tool schemas — the part you want cached</label>
+            <div class="editor-wrap">
+              <div class="hlback" id="hlback" aria-hidden="true"></div>
+              <textarea id="prompt" onscroll="syncHl()" spellcheck="false" placeholder="Paste the system prompt and tool definitions that sit at the START of your request...
+
+Anything that changes between calls — a timestamp, a request id, a session id, working memory — will break the cache for everything after it."></textarea>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <button class="btn primary" onclick="run()">Audit prompt <span class="ar">→</span></button>
+              <button class="btn" onclick="runFix()">Auto-fix</button>
+              <span class="badge" style="align-self:center">⌘/Ctrl + Enter</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- right: analysis -->
+        <div>
+          <div class="panel" style="margin-bottom:20px">
+            <div class="panel-h"><h3>Verdict</h3><span class="badge crit" id="linebadge" style="display:none"></span><span class="badge" id="tokbadge">—</span></div>
+            <div class="verdict">
+              <div class="score" id="score"><span><b id="scoreN">—</b><i id="scoreG">grade</i></span></div>
+              <div class="vtext">
+                <h2 id="vTitle">Waiting for a prompt</h2>
+                <p id="vSub">Paste a system prompt on the left. Nothing is uploaded — the audit runs in this tab.</p>
+              </div>
+            </div>
+            <div class="stats">
+              <div class="stat"><b id="sHit">—</b><i>hit rate</i></div>
+              <div class="stat"><b id="sFix">—</b><i>if fixed</i></div>
+              <div class="stat money"><b id="sWaste">—</b><i>waste / mo</i></div>
+              <div class="stat"><b id="sYear">—</b><i>waste / yr</i></div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-bottom:20px">
+            <div class="panel-h"><h3>Detected</h3><span class="badge" id="fcount">0</span></div>
+            <div id="findings"><div class="empty">No audit yet.</div></div>
+          </div>
+
+          <div class="panel" id="bpcard" style="margin-bottom:20px;display:none">
+            <div class="panel-h"><h3>Cache breakpoint</h3><span class="badge" id="bpbadge">—</span></div>
+            <div class="panel-b">
+              <p id="bpverdict" style="margin:0 0 10px;font-size:13.5px"></p>
+              <table id="bptable"></table>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-bottom:20px">
+            <div class="panel-h"><h3>Cost model</h3><span class="badge" id="provbadge">—</span></div>
+            <div class="panel-b">
+              <table id="cost">
+                <tbody><tr><td colspan="2" style="color:var(--ink3);text-align:center;padding:20px">Run an audit to model the cost.</td></tr></tbody>
+              </table>
+              <p class="note" id="costnote"></p>
+            </div>
+          </div>
+
+          <div class="panel" id="fixcard" style="display:none">
+            <div class="panel-h">
+              <h3>Recommended fix</h3>
+              <div class="row">
+                <button class="btn sm" onclick="copyText(state.fix.systemPrompt)">Copy prefix</button>
+                <button class="btn sm" onclick="copyText(state.fix.suffixBlock)">Copy suffix</button>
+                <button class="btn sm terra" onclick="applyFix()">Apply</button>
+              </div>
+            </div>
+            <div class="panel-b">
+              <p class="note" style="margin-top:0" id="fixnote"></p>
+              <div class="ba" id="baBlock" aria-live="polite"></div>
+              <label class="f">What moved — out of the cached prefix</label>
+              <div class="moved" id="movedLines"></div>
+              <label class="f">Cached prefix — volatile lines removed</label>
+              <pre id="fixPre"></pre>
+              <label class="f" style="margin-top:10px">Move this to the END of your user message</label>
+              <pre id="fixSuffix"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+    </div>
+
+    <!-- trust strip -->
+    <div class="strip">
+      <div class="wrap"><div class="in">
+        <div class="sstat"><b><span class="cnt" data-to="236">236</span></b><i>production prompts analysed</i></div>
+        <div class="sstat"><b><span class="cnt" data-to="55.5" data-dec="1">55.5</span><i style="display:inline;font-size:.55em;color:var(--terra)">%</i></b><i>contained a critical breaker</i></div>
+        <div class="sstat"><b><span class="cnt" data-to="14">14</span></b><i>static analysis rules</i></div>
+        <div class="sstat"><b><span class="cnt" data-to="16">16</span></b><i>vendors in the corpus</i></div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ===================== DIAGNOSTIC ===================== -->
+  <section class="sec parch" id="viz">
+    <div class="wrap">
+      <div class="sechead rv">
+        <span class="micro t">The diagnostic</span>
+        <h2>One stream. One breakpoint. <em>One bill.</em></h2>
+        <p class="secp">A cached prefix is a byte-exact contract. Everything before the breakpoint must never
+          change; everything after it may change freely. PrefixAudit draws that line on your prompt.</p>
+      </div>
+      <div class="stages rv" aria-label="Prefix lifecycle: cacheable prefix, cache break, fresh input, cost impact">
+        <span>CACHEABLE PREFIX</span><i>↓</i><span class="e">CACHE BREAK</span><i>↓</i><span>FRESH INPUT</span><i>↓</i><span class="t2">POTENTIAL COST IMPACT</span>
+      </div>
+      <!-- product instrument -->
+      <div class="instr" id="instr" aria-label="Product visualization: a prompt token stream with a detected cache breakpoint and its cost">
+        <div class="instr-h">
+          <div class="steps">
+            <span class="on">PROMPT</span><span>→</span><span class="on">CACHE ANALYSIS</span><span>→</span>
+            <span class="on">DETECTED BREAKPOINT</span><span>→</span><span class="on">COST IMPACT</span>
+          </div>
+          <span class="micro">live sample · support agent</span>
+        </div>
+        <div class="instr-b">
+          <div class="stream" aria-hidden="true">
+            <span class="tok">You</span><span class="tok">are</span><span class="tok">a</span><span class="tok">senior</span>
+            <span class="tok">support</span><span class="tok">agent</span><span class="tok">for</span><span class="tok">Acme</span>
+            <span class="tok">Billing.</span><span class="tok">##</span><span class="tok">Policy</span><span class="tok">Verify</span>
+            <span class="tok vol">2026-09-22T14:03:11Z</span>
+            <span class="tok dim">identity…</span><span class="tok dim">refunds…</span><span class="tok dim">escalate…</span>
+            <span class="tok dim">tools…</span><span class="tok dim">ledger…</span><span class="tok dim">…re-billed fresh</span>
+          </div>
+          <div class="bpline" aria-hidden="true"></div>
+        </div>
+        <div class="reads">
+          <div class="read"><i>CACHE BREAK</i><b class="err">Detected — volatile timestamp in prefix</b></div>
+          <div class="read"><i>ESTIMATED IMPACT</i><b class="terra">$598 / mo modelled waste</b></div>
+          <div class="read"><i>RECOMMENDED FIX</i><b class="okc">Move volatile content after the breakpoint</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== HOW ===================== -->
+  <section class="sec parch" id="how">
+    <div class="wrap">
+      <div class="sechead rv">
+        <span class="micro t">How it works</span>
+        <h2>Paste to <em>prevention.</em></h2>
+        <p class="secp">Five moves from first paste to a prefix that cannot silently regress. The same engine powers the web instrument, the CLI and the CI gate.</p>
+      </div>
+      <div class="how rv">
+        <div class="step">
+          <span class="n">01</span><h3>Paste</h3>
+          <p>Your system prompt and tool schemas — or the raw API request. Nothing leaves the tab.</p>
+          <div class="dia" aria-hidden="true"><span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="caret"></span></div>
+        </div>
+        <div class="step">
+          <span class="n">02</span><h3>Analyze</h3>
+          <p>Fourteen rules locate volatile content, missing breakpoints and below-minimum prefixes.</p>
+          <div class="dia" aria-hidden="true">
+            <span class="tk" style="left:8%;width:12%"></span><span class="tk" style="left:22%;width:9%"></span>
+            <span class="tk vol" style="left:33%;width:16%"></span><span class="vl" style="left:31%"></span>
+            <span class="tk dim" style="left:52%;width:10%"></span><span class="tk dim" style="left:64%;width:14%"></span>
+          </div>
+        </div>
+        <div class="step">
+          <span class="n">03</span><h3>Fix</h3>
+          <p>Auto-fix relocates volatile lines after the breakpoint. Nothing is deleted; the cache starts hitting.</p>
+          <div class="dia" aria-hidden="true"><span class="vl" style="left:30%"></span><span class="mv" style="width:16%"></span></div>
+        </div>
+        <div class="step">
+          <span class="n">04</span><h3>Prevent</h3>
+          <span class="chip avail">available</span>
+          <p>The CI gate fails the PR before the volatile byte merges; baselines catch silent drift.</p>
+          <div class="dia" aria-hidden="true"><span class="tk" style="left:8%;width:30%"></span><span class="gate"></span><span class="tk dim" style="left:46%;width:26%"></span></div>
+        </div>
+        <div class="step">
+          <span class="n">05</span><h3>Monitor</h3>
+          <span class="chip road">roadmap</span>
+          <p>Team-wide cache health, hit-rate trends and cost intelligence across every prompt you ship.</p>
+          <div class="dia" aria-hidden="true"><span class="spark"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+
+  <!-- ===================== RULES ===================== -->
+  <section class="sec parch" id="rules">
+    <div class="wrap">
+      <div class="sechead rv">
+        <span class="micro t">The diagnostic library</span>
+        <h2>Fourteen ways a prefix <em>dies.</em></h2>
+        <p class="secp">Every rule is a static pattern matched against your prefix, with its frequency in the
+          236-prompt corpus and the fix that restores the cache. Deep dives:
+          <a href="__SITE__/rules/">all rules</a> · <a href="__SITE__/providers/">per-provider floors &amp; pricing</a>.</p>
+      </div>
+      <div class="ledger rv" id="ruleCards"></div>
+    </div>
+  </section>
+
+  <!-- ===================== DEVELOPERS ===================== -->
+  <section class="sec dark" id="developers" data-light>
+    <div class="wrap">
+      <div class="sechead rv">
+        <span class="micro" style="color:var(--gold)">Developers</span>
+        <h2>Built for <em>engineers.</em></h2>
+        <p class="secp">A zero-dependency CLI that exits 1 on a broken prefix, a baseline hash that catches
+          silent drift, and a stability differ that points at the exact divergent byte.</p>
+      </div>
+      <div class="console" id="console">
+        <div class="console-h"><span></span><span></span><span></span><b>prefix-audit — zsh</b></div>
+        <pre><span class="ln"><span class="p">$</span> npx -y -p prefixaudit prefix-audit prompts/support.md --fail-on critical</span>
+<span class="ln"><span class="dim">──────────────────────────────────────────────────────</span></span>
+<span class="ln">  score <span class="crit">0/100</span>  grade <span class="crit">F</span>   prefix ~2,140 tokens   hit rate <span class="crit">0%</span></span>
+<span class="ln">  <span class="crit">[CRITICAL]</span> A timestamp is inside the cached prefix <span class="dim">(line 3)</span></span>
+<span class="ln">  <span class="wrn">[HIGH]</span>     Per-request identifiers are inside the cached prefix <span class="dim">(line 4)</span></span>
+<span class="ln">  <span class="lavc">FIX</span>  Move rendered dates after the breakpoint · <span class="dim">modelled waste $598/mo</span> <span class="caret2"></span></span></pre>
+      </div>
+      <div class="devbtns rv">
+        <button class="btn ghostd sm" onclick="copyText('npx -y -p prefixaudit prefix-audit prompts/support.md --fail-on critical')">Copy command ⧉</button>
+        <a class="btn ghostd sm" href="__SITE__/rules/">Documentation</a>
+        <a class="btn ghostd sm" href="https://github.com/abbojidevops/prefixaudit">GitHub</a>
+        <a class="btn ghostd sm" href="https://www.npmjs.com/package/prefixaudit">npm</a>
+      </div>
+      <div class="flaggrid rv">
+        <div class="flag"><b>--fail-on critical</b><i>exit 1 on any critical finding — CI goes red</i></div>
+        <div class="flag"><b>--max-waste 500</b><i>also fail above a modelled monthly waste</i></div>
+        <div class="flag"><b>--baseline f.lock</b><i>fail when the prefix hash drifts</i></div>
+        <div class="flag"><b>--stability a b c</b><i>diff N renders, name the divergent byte</i></div>
+        <div class="flag"><b>--json</b><i>machine-readable results for dashboards</i></div>
+        <div class="flag"><b>npm i -g prefixaudit</b><i>the command is prefix-audit</i></div>
+      </div>
+
+      <!-- CI pipeline -->
+      <div class="pipe" id="pipe" aria-label="CI pipeline: a prompt change is analyzed and the PR is blocked on a critical finding">
+        <div class="pnode"><span class="n">01 · DEVELOPER</span><h4>Prompt changed</h4><p>A timestamp slips into the system prompt on a feature branch.</p></div>
+        <div class="pnode"><span class="n">02 · GITHUB</span><h4>Pull request</h4><p>The change opens a PR like any other.</p></div>
+        <div class="pnode"><span class="n">03 · PREFIXAUDIT</span><h4>Prefix analyzed</h4><p>The Action audits every prompt in the diff.</p></div>
+        <div class="pnode alert"><span class="n">04 · FINDING</span><h4>Problem detected</h4><p>CRITICAL · dynamic-timestamp · line 3 · $598/mo modelled.</p></div>
+        <div class="pnode alert"><span class="n">05 · GATE</span><h4>PR blocked</h4><p>exit 1 — before the invoice explains it three weeks later.</p></div>
+      </div>
+
+      <p class="pipesecond rv"><span class="micro" style="color:var(--gold)">the same change, fixed</span></p>
+      <div class="pipe okpipe rv" aria-label="CI pipeline: the fixed prompt passes and the merge is allowed">
+        <div class="pnode"><span class="n">01 · DEVELOPER</span><h4>Prompt fixed</h4><p>The timestamp moves after the breakpoint; the prefix goes static.</p></div>
+        <div class="pnode"><span class="n">02 · GITHUB</span><h4>Pull request</h4><p>The amended change re-runs the check like any other.</p></div>
+        <div class="pnode"><span class="n">03 · PREFIXAUDIT</span><h4>Prefix analyzed</h4><p>Score 96/100 · no critical findings · baseline unchanged.</p></div>
+        <div class="pnode ok"><span class="n">04 · GATE</span><h4>No critical findings</h4><p>exit 0 — the prefix is byte-stable again.</p></div>
+        <div class="pnode ok"><span class="n">05 · MERGE</span><h4>✓ Merge allowed</h4><p>The cache keeps hitting. The invoice stays boring.</p></div>
+      </div>
+
+      <div class="codewrap" style="margin-top:22px;border:1px solid var(--lined);border-radius:10px;padding:16px;background:var(--esp3)">
+        <label class="f" style="color:var(--dtext2)">github action</label>
+<pre style="background:transparent;border:0;color:var(--dtext2)">name: prompt-cache
+on: [pull_request]
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npx -y -p prefixaudit prefix-audit prompts/support.md \
+             --provider anthropic --requests 8000 \
+             --fail-on critical --max-waste 500</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== COST INTELLIGENCE ===================== -->
+  <section class="sec parch" id="costintel">
+    <div class="wrap ci rv">
+      <h2>One byte can <em>change the bill.</em></h2>
+      <p>A cached prefix is billed at 0.1× on reads — but only while it matches byte-for-byte. One rendered
+        timestamp turns every "cached" call into a full-price write plus a full-price read. PrefixAudit models
+        that effect from your inputs and public provider economics, and shows the line responsible.</p>
+      <p class="micro t">Modelled ≠ measured — web cost figures are models, never invoice measurements.</p>
+    </div>
+  </section>
+
+  <!-- ===================== RESEARCH ===================== -->
+  <section class="sec parch" id="research">
+    <div class="wrap">
+      <div class="sechead rv">
+        <span class="micro t">Research</span>
+        <h2>The PrefixAudit <em>cache benchmark.</em></h2>
+        <p class="secp">The rules and the numbers on this page come from a structured study of public production
+          prompts — not from vibes. Here is exactly what we measured, and what we only model.</p>
+      </div>
+      <div class="bench rv">
+        <div><b>236</b><i>production prompts analysed</i></div>
+        <div><b>14</b><i>static-analysis rules</i></div>
+        <div><b>16</b><i>vendors in the corpus</i></div>
+        <div><b>55.5%</b><i>contained a critical breaker</i></div>
+        <div><b>28.8%</b><i>below the cache minimum</i></div>
+        <div><b>2,914</b><i>median prefix tokens</i></div>
+      </div>
+      <div class="rv">
+        <details class="acc"><summary>Methodology</summary><p>Each prompt was parsed, its code blocks masked, then scanned by the same 14 deterministic rules that run in this page and the CLI. Findings are positional: a volatile byte near the top of the prefix weighs more than one near the breakpoint. A 261-test suite re-verifies every rule against false-positive fixtures on every build.</p></details>
+        <details class="acc"><summary>Corpus</summary><p>236 system prompts and tool schemas drawn from public production prompt corpora, spanning 16 vendors and product categories. The corpus is a snapshot of what ships to production in the wild. It is not your workload — and we say so wherever it is quoted.</p></details>
+        <details class="acc"><summary>Rules</summary><p>Four critical, five high, five medium: rendered timestamps, request identifiers, per-user personalisation, mutable memory, below-minimum prefixes, ordering, tool churn, missing breakpoint markers, model churn, TTL cadence, retry rebuilds, missing cache instrumentation, unstable serialisation, prefix bloat. Every rule ships its evidence, its fix and its corpus frequency.</p></details>
+        <details class="acc"><summary>Provider assumptions</summary><p>Cache reads at 0.1× of base input across Anthropic, OpenAI, Gemini and DeepSeek; writes at 1.25× (Anthropic 5-minute TTL, OpenAI GPT-5.6+) or 1.0×; minimums 1,024 / 1,024 / 2,048 / 1,024 tokens. All transcribed from public 2026 price pages — and editable in the instrument, because your contract may differ.</p></details>
+        <details class="acc"><summary>Pricing methodology</summary><p>Dollar figures are a model: prefix tokens × request volume × provider multipliers. They estimate billing mechanics; they never measure your invoice. The instrument labels every figure accordingly.</p></details>
+        <details class="acc"><summary>Limitations</summary><p>Token counts are heuristic (±15% against real BPE on our corpus). The corpus over-represents public, English, assistant-style prompts and does not represent all production AI workloads. Cache hit rates are never claimed as measured — only provider billing mechanics and corpus frequencies are stated as fact.</p></details>
+        <details class="acc"><summary>Sources</summary><p>Harness <i>State of AI in FinOps 2026</i>; FinOps Foundation <i>State of FinOps 2026</i>; ProjectDiscovery's prompt-caching engineering writeup; public 2026 price pages of Anthropic, OpenAI, Google and DeepSeek; the 236-prompt public corpus study shipped in this repository.</p></details>
+      </div>
+      <div class="legend rv">
+        <span>MEASURED — corpus frequencies</span><span>MODELLED — dollar impact</span><span>ESTIMATED — token counts ±15%</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PRICING ===================== -->
+  <section class="sec" id="pricing">
+    <div class="wrap">
+      <div class="sechead rv">
+        <span class="micro t">Pricing</span>
+        <h2>The auditor is free. <em>Staying fixed</em> is the product.</h2>
+        <p class="secp">The web instrument and the CLI cost nothing, forever. The paid tiers keep the prefix
+          fixed across a team, a repo and a deploy schedule.</p>
+      </div>
+      <div class="tiers rv">
+        <div class="tier">
+          <span class="micro">Free · try</span>
+          <p class="price">$0</p>
+          <ul>
+            <li>Unlimited web audits, all 14 rules</li>
+            <li>Cost model with editable provider economics</li>
+            <li>Auto-fix and breakpoint analysis</li>
+            <li>Open-source CLI for local use</li>
+            <li>No account, no upload, no key</li>
+          </ul>
+          <button class="btn" onclick="loadSample('broken')">Run an audit</button>
+        </div>
+        <div class="tier hot">
+          <span class="micro">Developer · integrate</span>
+          <p class="price">$29 <i>/ month</i></p>
+          <ul>
+            <li>Hosted GitHub Action CI gate</li>
+            <li>Baseline drift detection on every PR</li>
+            <li>PR comments naming the offending line</li>
+            <li>Slack alert when a deploy drops hit rate</li>
+            <li>Email support from the engineers</li>
+          </ul>
+          <button class="btn terra">Start with the gate</button>
+        </div>
+        <div class="tier">
+          <span class="micro">Team · protect + monitor</span>
+          <p class="price">$199 <i>/ month</i></p>
+          <ul>
+            <li>Ingest <code>cache_read_input_tokens</code></li>
+            <li>Real hit-rate charts per feature</li>
+            <li>Alert on a 10-point drop, rolling 24 h</li>
+            <li>Quarterly audit review with us</li>
+            <li>SSO and priority support</li>
+          </ul>
+          <button class="btn">Talk to us</button>
+        </div>
+      </div>
+      <p class="note" style="margin-top:26px">
+        Sources for the figures on this page: Harness <i>State of AI in FinOps 2026</i> (26% of AI spend wasted,
+        72% hit a surprise AI bill); FinOps Foundation <i>State of FinOps 2026</i> (98% now manage AI spend,
+        up from 31% two years ago); ProjectDiscovery's engineering writeup (7% → 84% cache hit rate, 59% cost
+        reduction, 9.8B tokens served from cache). Provider cache multipliers are transcribed from public 2026
+        price tables and are editable in the instrument — always verify against your own invoice.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== PLATFORM ===================== -->
+  <section class="sec" id="platform">
+    <div class="wrap">
+      <div class="sechead rv">
+        <span class="micro t">Platform</span>
+        <h2>From free audit to <em>AI cost infrastructure.</em></h2>
+        <p class="secp">What is live today, what comes next, and what we only build when a team pays for it.
+          Nothing here is vapourware wearing a product's clothes.</p>
+      </div>
+      <div class="ladder rv">
+        <div class="rung"><b>FREE AUDITOR</b><span class="chip avail">available</span><p>Browser instrument, all 14 rules, zero upload.</p></div>
+        <div class="rung"><b>CLI</b><span class="chip avail">available</span><p>prefix-audit · exit codes · JSON · zero deps.</p></div>
+        <div class="rung"><b>CI/CD GATE</b><span class="chip avail">available</span><p>GitHub Action, PR annotations, --fail-on.</p></div>
+        <div class="rung"><b>BASELINE &amp; DRIFT</b><span class="chip avail">available</span><p>--baseline and --stability in the CLI today.</p></div>
+        <div class="rung road"><b>TEAM MONITORING</b><span class="chip road">coming soon</span><p>Hit-rate ingestion, alerts, team analytics.</p></div>
+        <div class="rung road"><b>AI COST INTELLIGENCE</b><span class="chip road">roadmap</span><p>Spend visibility, anomalies, provider economics.</p></div>
+        <div class="rung road"><b>PRODUCTION RELIABILITY</b><span class="chip road">future</span><p>Reliability signals across deploys, models and providers.</p></div>
+      </div>
+      <div class="dashprev rv" aria-label="Preview of a future dashboard, not a live product">
+        <span class="tag">COMING SOON — CONCEPT PREVIEW, NOT A LIVE PRODUCT</span>
+        <div class="cell"><b>AI spend</b><span>—</span></div>
+        <div class="cell"><b>Cache hit rate</b><span>—</span></div>
+        <div class="cell"><b>Prompt health</b><span>—</span></div>
+        <div class="cell"><b>Cost anomalies</b><span>—</span></div>
+        <div class="cell"><b>Recent regressions</b><span>—</span></div>
+        <div class="cell"><b>Provider usage</b><span>—</span></div>
+        <div class="cell"><b>Repositories</b><span>—</span></div>
+        <div class="cell"><b>Teams</b><span>—</span></div>
+        <div class="cell"><b>Alerts</b><span>—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FINAL CTA ===================== -->
+  <section class="sec dark final">
+    <div class="wrap rv">
+      <span class="micro" style="color:var(--gold)">One byte is billing you</span>
+      <h2>Your prompt should work<br>as hard as <em>your model.</em></h2>
+      <p>Find the byte that is quietly increasing your AI bill. No account required. Nothing uploaded.</p>
+      <div class="row">
+        <button class="btn terra lg" onclick="loadSample('broken')">Run your first audit <span class="ar">→</span></button>
+        <button class="btn ghostd lg" onclick="copyText('npx -y -p prefixaudit prefix-audit')">copy npx ⧉</button>
+      </div>
+    </div>
+    <div class="diagline" aria-hidden="true"></div>
+  </section>
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer>
+  <div class="wrap">
+    <div class="fcols">
+      <div class="fbrand">
+        <a class="logo" href="#top" style="color:var(--dtext);margin-bottom:14px">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#211D1A"/><path d="M8 10h16M8 16h10M8 22h13" stroke="#B86B4B" stroke-width="2.5" stroke-linecap="round"/></svg>
+          PrefixAudit</a>
+        <p>The audit runs entirely in your browser. No prompt is transmitted, stored or logged.
+          Dollar figures are a model from public price tables, never a measurement.</p>
+      </div>
+      <div><h5>Product</h5><a href="#auditor">Auditor</a><a href="#how">How it works</a><a href="#rules">Rules</a><a href="#pricing">Pricing</a></div>
+      <div><h5>Developers</h5><a href="#developers">CLI</a><a href="#developers">GitHub Action</a><a href="https://github.com/abbojidevops/prefixaudit">GitHub</a><a href="https://www.npmjs.com/package/prefixaudit">npm</a></div>
+      <div><h5>Resources</h5><a href="__SITE__/rules/">Rule library</a><a href="__SITE__/providers/">Providers</a><a href="__SITE__/llms.txt">llms.txt</a><a href="__SITE__/sitemap.xml">Sitemap</a></div>
+      <div><h5>Company</h5><a href="#top">About</a><a href="mailto:abbojinikhil2157@gmail.com">Contact</a></div>
+      <div><h5>Legal</h5><a href="__SITE__/privacy.html">Privacy</a><a href="__SITE__/terms.html">Terms</a></div>
+    </div>
+    <div class="fbottom">
+      <span>© 2026 PrefixAudit. Token counts are estimates (±15%).</span>
+      <span>Ivory · Espresso · Terracotta — set in editorial serif &amp; mono.</span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+/* ===================== UI ===================== */
+const state = { res: null, fix: null };
+const $ = (id) => document.getElementById(id);
+
+const SAMPLES = {
+broken: `You are a senior support agent for Acme Billing.
+
+Current date and time: 2026-09-22T14:03:11Z
+request_id: 8f14e45f-ceea-467a-9b1e-1f2b3c4d5e6f
+The user's name is Priya Sharma
+User locale: en-IN, timezone: Asia/Kolkata, currency: INR
+
+## Working memory
+- last step: looked up invoice INV-4471
+- current state: awaiting manager approval
+
+## Tools
+- look_up_invoice(invoice_id: string) -> Invoice
+- issue_refund(invoice_id: string, amount_cents: integer) -> Receipt
+- escalate(ticket_id: string, reason: string) -> Ticket
+
+## Policy
+Verify the customer's identity before discussing any account details.
+Refunds above $500 require manager approval. Never invent a policy that is not written here.
+Always respond in the customer's language. Keep responses under 150 words.
+Escalate to a human when the customer asks twice.
+
+## Extended policy
+- Verify the billing address on file before issuing any credit, and record the verification in the ticket notes.
+- When a customer disputes a charge older than 90 days, route to the legacy billing team rather than refunding directly.
+- Partial refunds are allowed up to the full invoice amount but must reference the original invoice identifier exactly.
+- If the customer is on an annual plan, prorate any credit by the number of days remaining in the current term.
+- Never promise a specific settlement date. Quote the published 3 to 5 business day window and nothing tighter.
+- When two invoices appear to be duplicates, confirm the merchant reference and the settlement timestamp before acting.
+- If a payment method has failed three times in a rolling week, ask the customer to update it before issuing credit.
+- Keep every refund under the manager approval threshold unless the customer has escalated twice in writing.
+- Log the outcome of every escalation in the shared ledger so the next agent does not repeat the investigation.
+- Do not discuss internal system behaviour, retry logic, or infrastructure with the customer under any circumstances.
+`,
+// Built with JSON.stringify on purpose: a hand-escaped JSON sample inside a
+// template literal turns \n into a real newline, which is illegal inside a
+// JSON string. Generating it means this cannot silently become invalid.
+request: JSON.stringify(
+  {
+    model: 'claude-opus-4-7',
+    max_tokens: 1024,
+    system: [
+      {
+        type: 'text',
+        text: [
+          'You are a senior support agent for Acme Billing.',
+          '',
+          'Current date and time: 2026-09-22T14:03:11Z',
+          'request_id: 8f14e45f-ceea-467a-9b1e-1f2b3c4d5e6f',
+          '',
+          '## Policy',
+          "Verify the customer's identity before discussing account details.",
+          'Refunds above $500 require manager approval.',
+          'Never invent a policy that is not written here.',
+          'Keep responses under 150 words.',
+          '',
+          '## Extended policy',
+          '- Verify the billing address on file before issuing any credit, and record it in the ticket notes.',
+          '- Disputes older than 90 days go to the legacy billing team rather than being refunded directly.',
+          '- Partial refunds may go up to the full invoice amount but must reference the original invoice id.',
+          '- On annual plans, prorate any credit by the days remaining in the current term.',
+          '- Never promise a settlement date tighter than the published 3 to 5 business day window.',
+          '- For apparent duplicate invoices, confirm the merchant reference and settlement timestamp first.',
+          '- After three failed payment attempts in a week, ask the customer to update their method.',
+          '- Keep refunds under the approval threshold unless the customer escalated twice in writing.',
+          '- Log every escalation outcome in the shared ledger so the next agent need not repeat it.',
+          '- Never discuss internal system behaviour, retry logic or infrastructure with the customer.',
+          '- Escalate to a human when the customer asks twice, or when the amount exceeds the threshold.',
+          '- When uncertain, say so plainly rather than guessing at a policy that is not documented here.',
+        ].join('\n'),
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    tools: [
+      {
+        name: 'look_up_invoice',
+        description: 'Fetch an invoice by id',
+        input_schema: { type: 'object', properties: { invoice_id: { type: 'string' } }, required: ['invoice_id'] },
+      },
+      {
+        name: 'issue_refund',
+        description: 'Issue a refund against an invoice',
+        input_schema: {
+          type: 'object',
+          properties: { invoice_id: { type: 'string' }, amount_cents: { type: 'integer' } },
+          required: ['invoice_id', 'amount_cents'],
+        },
+      },
+    ],
+    messages: [{ role: 'user', content: 'I was charged twice for invoice INV-4471, please refund.' }],
+  },
+  null,
+  2,
+),
+clean: `You are a senior support agent for Acme Billing.
+
+## Tools
+- look_up_invoice(invoice_id: string) -> Invoice
+- issue_refund(invoice_id: string, amount_cents: integer) -> Receipt
+- escalate(ticket_id: string, reason: string) -> Ticket
+
+## Policy
+Verify the customer's identity before discussing any account details.
+Refunds above $500 require manager approval. Never invent a policy that is not written here.
+Always respond in the customer's language. Keep responses under 150 words.
+Escalate to a human when the customer asks twice.
+
+## Extended policy
+- Verify the billing address on file before issuing any credit, and record the verification in the ticket notes.
+- When a customer disputes a charge older than 90 days, route to the legacy billing team rather than refunding directly.
+- Partial refunds are allowed up to the full invoice amount but must reference the original invoice identifier exactly.
+- If the customer is on an annual plan, prorate any credit by the number of days remaining in the current term.
+- Never promise a specific settlement date. Quote the published 3 to 5 business day window and nothing tighter.
+- When two invoices appear to be duplicates, confirm the merchant reference and the settlement timestamp before acting.
+- If a payment method has failed three times in a rolling week, ask the customer to update it before issuing credit.
+- Keep every refund under the manager approval threshold unless the customer has escalated twice in writing.
+- Log the outcome of every escalation in the shared ledger so the next agent does not repeat the investigation.
+- Do not discuss internal system behaviour, retry logic, or infrastructure with the customer under any circumstances.
+`
+};
+
+/* Corpus frequencies — real counts from research/findings.json (236 prompts). */
+const CORPUS_FREQ = {
+  'dynamic-timestamp': [76, 32.2], 'below-minimum': [68, 28.8], 'prefix-bloat': [36, 15.3],
+  'mutable-memory-in-prefix': [27, 11.4], 'personalisation-in-prefix': [11, 4.7],
+  'volatile-id': [7, 3], 'ordering': [4, 1.7], 'tool-churn': [2, 0.8],
+};
+/* Illustrative one-liners for the rule library. */
+const RULE_EX = {
+  'dynamic-timestamp': 'Current date and time: 2026-09-22T14:03:11Z',
+  'volatile-id': 'request_id: 8f14e45f-ceea-4614-9b1e-…',
+  'personalisation-in-prefix': "The user's name is Priya Sharma",
+  'mutable-memory-in-prefix': '## Working memory — last step: looked up INV-4471',
+  'below-minimum': 'A 400-token system prompt against a 1,024-token minimum',
+  'ordering': 'Session context placed above the stable role statement',
+  'tool-churn': 'Tool list re-serialised in a different order per call',
+  'no-breakpoint': 'Anthropic request with no cache_control marker',
+  'model-churn': 'One prefix routed to two model tiers across calls',
+  'ttl-cadence': 'Requests 12 minutes apart against a 5-minute TTL',
+  'retry-rebuilds': 'Retry path re-renders the whole prefix from scratch',
+  'no-cache-metric': 'No logging of cache_read_input_tokens',
+  'unstable-serialisation': 'Context injected from a dict whose order changes per render',
+  'prefix-bloat': 'A 21,000-token prefix carrying duplicated policy pages',
+};
+
+const SEVCOLOR = { critical: 'var(--crit)', high: 'var(--warn)', medium: 'var(--info)', low: 'var(--ink2)' };
+
+function scoreColor(s) {
+  return s >= 90 ? 'var(--ok)' : s >= 75 ? 'var(--info)' : s >= 55 ? 'var(--warn)' : 'var(--crit)';
+}
+function money(n) {
+  if (!Number.isFinite(n)) return '—';
+  const a = Math.abs(n);
+  if (a >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
+  return '$' + n.toFixed(2);
+}
+function esc(s) {
+  return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+function tick(el) {
+  el.classList.remove('tick');
+  void el.offsetWidth;
+  el.classList.add('tick');
+}
+
+function initProviders() {
+  const sel = $('provider');
+  sel.innerHTML = '';
+  for (const [k, p] of Object.entries(PROVIDERS)) {
+    if (k === 'custom') continue;
+    const o = document.createElement('option');
+    o.value = k;
+    o.textContent = p.label;
+    sel.appendChild(o);
+  }
+  syncPrices();
+}
+
+function syncPrices() {
+  const p = PROVIDERS[$('provider').value] || PROVIDERS.anthropic;
+  $('base').value = p.baseInputPerM;
+  $('readm').value = p.readMult;
+  $('mintok').value = p.minTokens;
+  $('provbadge').textContent = p.label;
+}
+
+function buildOpts() {
+  return {
+    providerKey: $('provider').value,
+    priceOverrides: {
+      baseInputPerM: parseFloat($('base').value) || undefined,
+      readMult: parseFloat($('readm').value) || undefined,
+      minTokens: parseInt($('mintok').value, 10) || undefined,
+    },
+    requestsPerDay: parseInt($('requests').value, 10) || 1000,
+    ttl: $('ttl').value,
+    logsCacheTokens: $('logs').checked,
+  };
+}
+
+/* ---- editor line highlighting: a backdrop mirrors the textarea ---- */
+function syncHl() { $('hlback').scrollTop = $('prompt').scrollTop; }
+function renderHighlight(res) {
+  const lines = $('prompt').value.split('\n');
+  const flagged = new Set();
+  for (const f of res.findings) for (const e of (f.evidence || [])) if (e.line) flagged.add(e.line);
+  $('hlback').innerHTML = lines.map((l, i) =>
+    `<div class="hl${flagged.has(i + 1) ? ' on' : ''}">${esc(l) || '&nbsp;'}</div>`).join('');
+}
+
+function run() {
+  const text = $('prompt').value;
+  if (!text.trim()) return resetResults();
+
+  // If the input is an API request payload, parse it: that gives us the real
+  // cache_control placement instead of trusting a checkbox.
+  const isPayload = looksLikeJson(text);
+  const opts = buildOpts();
+
+  const res = isPayload
+    ? auditPayload(text, opts)
+    : audit({ ...opts, systemPrompt: text, userMessage: $('user').value, hasBreakpoint: $('bp').checked });
+
+  // Reflect the derived breakpoint state in the UI rather than asking.
+  if (isPayload && res.payload && res.payload.kind === 'request') {
+    $('bp').checked = res.payload.hasBreakpoint;
+    $('bpWrap').style.opacity = '0.45';
+    $('bp').disabled = true;
+    const m = $('modebadge');
+    m.style.display = '';
+    m.className = 'badge ok';
+    m.textContent = '● request payload' + (res.payload.model ? ' · ' + res.payload.model : '') +
+      (res.payload.toolCount ? ' · ' + res.payload.toolCount + ' tools' : '');
+  } else {
+    $('bp').disabled = false;
+    $('bpWrap').style.opacity = '1';
+    $('modebadge').style.display = 'none';
+  }
+
+  state.res = res;
+  state.fix = null;
+  $('fixcard').style.display = 'none';
+  render(res);
+}
+
+function resetResults() {
+  state.res = null;
+  $('scoreN').textContent = '—';
+  $('scoreG').textContent = 'grade';
+  $('score').style.setProperty('--p', 0);
+  $('score').style.setProperty('--sc', 'var(--line)');
+  $('vTitle').textContent = 'Waiting for a prompt';
+  $('vSub').textContent = 'Paste a system prompt on the left. Nothing is uploaded — the audit runs in this tab.';
+  for (const id of ['sHit', 'sFix', 'sWaste', 'sYear']) $(id).textContent = '—';
+  $('findings').innerHTML = '<div class="empty">No audit yet.</div>';
+  $('fcount').textContent = '0';
+  $('tokbadge').textContent = '—';
+  $('cost').innerHTML = '<tbody><tr><td colspan="2" style="color:var(--ink3);text-align:center;padding:20px">Run an audit to model the cost.</td></tr></tbody>';
+  $('costnote').textContent = '';
+  $('bpcard').style.display = 'none';
+  $('modebadge').style.display = 'none';
+  $('bp').disabled = false;
+  $('bpWrap').style.opacity = '1';
+  $('hlback').innerHTML = '';
+  $('linebadge').style.display = 'none';
+  $('baBlock').innerHTML = '';
+}
+
+function render(res) {
+  const c = scoreColor(res.score);
+  $('score').style.setProperty('--p', res.score);
+  $('score').style.setProperty('--sc', c);
+  $('scoreN').textContent = res.score;
+  $('scoreG').textContent = 'grade ' + res.grade;
+  $('tokbadge').textContent = '~' + res.prefixTokens.toLocaleString() + ' prefix tokens';
+
+  const n = res.findings.length;
+  $('vTitle').textContent = n === 0 ? 'This prefix caches cleanly' : n + ' cache-break pattern' + (n === 1 ? '' : 's') + ' found';
+  $('vSub').textContent = res.verdict;
+
+  $('sHit').textContent = Math.round(res.hitRate * 100) + '%';
+  $('sFix').textContent = Math.round(res.fixedHitRate * 100) + '%';
+  $('sWaste').textContent = money(res.monthlyWaste);
+  $('sYear').textContent = money(res.annualWaste);
+  $('sHit').style.color = res.hitRate < 0.5 ? 'var(--crit)' : res.hitRate < 0.8 ? 'var(--warn)' : 'var(--ok)';
+  tick($('sWaste')); tick($('sHit'));
+
+  $('fcount').textContent = `${res.counts.critical}C / ${res.counts.high}H / ${res.counts.medium}M`;
+
+  /* findings */
+  const box = $('findings');
+  if (!n) {
+    box.innerHTML = '<div class="empty">No cache-break patterns detected. Keep the prefix static and verify <code>cache_read_input_tokens &gt; 0</code> in production.</div>';
+  } else {
+    box.innerHTML = res.findings.map((f, i) => `
+      <div class="find ${i < 2 ? 'open' : ''}" data-i="${i}" style="animation:rise .4s both ${i * 45}ms">
+        <div class="fh" onclick="this.parentNode.classList.toggle('open')">
+          <span class="tag t-${f.severity}">${f.severity}</span>
+          <h4>${esc(f.title)}</h4>
+          <span class="ln">${f.evidence[0] && f.evidence[0].line ? 'line ' + f.evidence[0].line : ''}</span>
+        </div>
+        <div class="fbody">
+          <p class="why">${esc(f.why)}</p>
+          ${f.evidence.slice(0, 5).map((e) => `<div class="ev"><span class="ln">${e.line ? 'L' + e.line : '—'}</span>${esc(e.snippet)}</div>`).join('')}
+          ${f.evidence.length > 5 ? `<p class="note">…and ${f.evidence.length - 5} more occurrence(s).</p>` : ''}
+          ${typeof f.atPercent === 'number' ? `<p class="note">Sits at <b>${f.atPercent}%</b> into the prefix — everything after that byte re-bills fresh${f.atPercent <= 5 ? ', i.e. essentially the entire prefix' : ` (${100 - f.atPercent}% of it)`}.</p>` : ''}
+          <div class="fix"><b>Recommended fix</b>${esc(f.fix)}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  renderBreakpoint(res);
+  renderHighlight(res);
+
+  /* first critical line, surfaced in the verdict header */
+  const lb = $('linebadge');
+  const firstCrit = res.findings.find((f) => f.severity === 'critical' && f.evidence[0] && f.evidence[0].line);
+  if (firstCrit) { lb.style.display = ''; lb.textContent = 'LINE ' + firstCrit.evidence[0].line; }
+  else lb.style.display = 'none';
+
+  /* cost */
+  const co = res.cost, rp = res.repairedCost;
+  $('cost').innerHTML = `<tbody>
+    <tr><th></th><th>now</th><th>if fixed</th></tr>
+    <tr><td>Cache-hit rate</td><td class="${res.hitRate < 0.5 ? 'bad' : ''}">${Math.round(res.hitRate * 100)}%</td><td class="save">${Math.round(res.fixedHitRate * 100)}%</td></tr>
+    <tr><td>Cached reads</td><td>${money(co.readCost)}</td><td class="save">${money(rp.readCost)}</td></tr>
+    <tr><td>Full-price misses</td><td class="${co.missCost > 0 ? 'bad' : ''}">${money(co.missCost)}</td><td>${money(rp.missCost)}</td></tr>
+    <tr><td>Cache writes</td><td>${money(co.writeCost)}</td><td>${money(rp.writeCost)}</td></tr>
+    <tr class="total"><td>Per month</td><td>${money(co.total)}</td><td class="save">${money(rp.total)}</td></tr>
+    <tr class="total"><td>Per year</td><td>${money(co.total * 12)}</td><td class="save">${money(rp.total * 12)}</td></tr>
+    <tr class="diff"><td>Potential difference</td><td colspan="2" class="save">${money(Math.max(0, co.total - rp.total))}/mo · ${money(Math.max(0, (co.total - rp.total) * 12))}/yr</td></tr>
+  </tbody>`;
+  $('costnote').textContent =
+    `${co.requestsPerMonth.toLocaleString()} requests/month on a ~${res.prefixTokens.toLocaleString()}-token prefix. ` +
+    `Base input ${money(res.provider.baseInputPerM)}/MTok, reads at ${res.provider.readMult}×, writes at ${res.provider.writeMult}×. ` +
+    `${res.provider.note} Editable in advanced settings — confirm against your own invoice. ` +
+    `Modeled estimate based on selected provider economics and request assumptions.`;
+}
+
+function looksLikeJson(t) {
+  const s = t.trim();
+  return (s.startsWith('{') || s.startsWith('[')) && (s.endsWith('}') || s.endsWith(']'));
+}
+
+function renderBreakpoint(res) {
+  const card = $('bpcard');
+  const bp = res.breakpoint;
+  const pl = res.payload;
+  if (!pl || pl.kind !== 'request') {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  if (!bp) {
+    $('bpbadge').textContent = 'none found';
+    $('bpbadge').className = 'badge';
+    $('bpverdict').innerHTML =
+      'No <code>cache_control</code> marker on any system or tool block. On Anthropic nothing is cached ' +
+      'without one — you are paying a write premium on every call and collecting zero reads.' +
+      (pl.warnings && pl.warnings.length ? '<br><span class="note">' + esc(pl.warnings.join(' · ')) + '</span>' : '');
+    $('bptable').innerHTML = '';
+    return;
+  }
+  $('bpbadge').textContent = 'at ' + bp.percent + '% of prefix';
+  $('bpbadge').className = 'badge ' + (bp.clean ? 'ok' : '');
+  $('bpbadge').style.color = bp.clean ? '' : 'var(--warn)';
+  $('bpbadge').style.borderColor = bp.clean ? '' : 'rgba(201,168,106,.55)';
+  $('bpverdict').innerHTML = esc(bp.verdict);
+  const before = bp.tokensBefore.toLocaleString();
+  const after = bp.tokensAfter.toLocaleString();
+  $('bptable').innerHTML = `<tbody>
+    <tr><th></th><th>before breakpoint</th><th>after</th></tr>
+    <tr><td>Prefix tokens</td><td>${before}</td><td>${after}</td></tr>
+    <tr><td>Volatile patterns</td>
+        <td class="${bp.volatileBefore.length ? 'bad' : 'save'}">${bp.volatileBefore.length}</td>
+        <td class="${bp.volatileAfter.length ? '' : 'save'}">${bp.volatileAfter.length}</td></tr>
+    ${bp.volatileBefore.length ? `<tr><td>Offenders</td><td colspan="2" style="text-align:left;font-family:var(--sans);font-size:12.5px;color:var(--terra)">${bp.volatileBefore.map((v) => esc(v.label) + ' — ' + esc(v.snippet)).join('<br>')}</td></tr>` : ''}
+  </tbody>`;
+}
+
+function runFix() {
+  const text = $('prompt').value;
+  if (!text.trim()) { toast('Paste a prompt first'); return; }
+  const fix = autoFix(text);
+  if (!fix.changed) { toast('Nothing volatile found to move'); return; }
+  state.fix = fix;
+  $('fixcard').style.display = 'block';
+
+  /* before/after, both sides computed by the engine — labelled modelled */
+  const b = state.res;
+  const after = audit({ ...buildOpts(), systemPrompt: fix.systemPrompt, userMessage: $('user').value, hasBreakpoint: $('bp').checked });
+  $('baBlock').innerHTML =
+    `<div class="ba-row bad"><i>Before</i><b>${Math.round((b ? b.hitRate : 0) * 100)}% hit</b><span>${money(b ? b.monthlyWaste : NaN)}/mo modelled waste</span></div>` +
+    `<div class="ba-row good"><i>After</i><b>${Math.round(after.hitRate * 100)}% hit</b><span>${money(after.monthlyWaste)}/mo modelled waste</span></div>` +
+    `<p class="note" style="margin:8px 0 0">Modelled from your inputs and provider economics — not a measured invoice.</p>`;
+
+  $('movedLines').innerHTML = fix.movedLines.map((l, i) =>
+    `<span class="mvline" style="animation-delay:${i * 90}ms">↳ ${esc(l)}</span>`).join('');
+  $('fixPre').textContent = fix.systemPrompt;
+  $('fixSuffix').textContent = fix.suffixBlock;
+  $('fixnote').innerHTML = `Moved <b>${fix.movedLines.length}</b> volatile line(s) out of the cached prefix. ` +
+    `Paste the prefix into your system block and append the suffix to the END of the user message. ` +
+    `Nothing was deleted — re-run the audit after applying to confirm the hit rate rose.`;
+  $('fixcard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function applyFix() {
+  if (!state.fix) return;
+  $('prompt').value = state.fix.systemPrompt;
+  $('user').value = ($('user').value ? $('user').value.trim() + '\n\n' : '') + state.fix.suffixBlock;
+  $('fixcard').style.display = 'none';
+  run();
+  toast('Applied — hit rate recalculated');
+}
+
+function clearAll() {
+  $('prompt').value = '';
+  $('user').value = '';
+  $('fixcard').style.display = 'none';
+  resetResults();
+}
+
+function loadSample(k) {
+  $('prompt').value = SAMPLES[k];
+  $('user').value = k === 'broken' ? 'I was charged twice for invoice INV-4471, please refund.' : '';
+  if (k !== 'request') {
+    $('bp').disabled = false;
+    $('bp').checked = k === 'clean';
+  }
+  $('logs').checked = k === 'clean' || k === 'request';
+  run();
+  document.getElementById('auditor').scrollIntoView({ behavior: 'smooth' });
+}
+
+function openFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { $('prompt').value = String(r.result); run(); toast('Loaded ' + f.name); };
+  r.readAsText(f);
+  input.value = '';
+}
+
+function copyText(t) {
+  const done = () => toast('Copied to clipboard');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(done, () => fallbackCopy(t, done));
+  } else fallbackCopy(t, done);
+}
+function fallbackCopy(t, done) {
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed'); }
+  document.body.removeChild(ta);
+}
+let toastT;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 1900);
+}
+
+function renderRuleCards() {
+  $('ruleCards').innerHTML = RULE_CATALOG.map((r) => `
+    <div class="mini">
+      <span class="tag t-${r.severity}">${r.severity}</span>
+      <div>
+        <h4>${esc(r.title)}</h4>
+        <p>${esc(r.why)}</p>
+        ${RULE_EX[r.id] ? `<p class="evline"><b>e.g.</b> <code>${esc(RULE_EX[r.id])}</code></p>` : ''}
+        <p class="fixline"><b>FIX</b>${esc(r.fix)}</p>
+        <p class="freqline">${CORPUS_FREQ[r.id] ? CORPUS_FREQ[r.id][0] + ' of 236 prompts (' + CORPUS_FREQ[r.id][1] + '%)' : 'not observed in the 236-prompt corpus'}</p>
+      </div>
+    </div>`).join('');
+}
+
+$('provider').addEventListener('change', () => { syncPrices(); run(); });
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+});
+$('prompt').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(run, 420); });
+
+initProviders();
+renderRuleCards();
+loadSample('broken');
+</script>
+<script>
+/* ===================== FX — intentional motion only =====================
+ * Decorative-but-meaningful layer. Must never throw: the test harness runs
+ * this in a stub DOM, so every API is feature-detected and the body is
+ * wrapped in try/catch.
+ */
+(function () {
+  try {
+    var w = window, d = document;
+    if (typeof w.requestAnimationFrame !== 'function' || typeof d.querySelectorAll !== 'function') return;
+    var reduced = !!(w.matchMedia && w.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    var fine = !!(w.matchMedia && w.matchMedia('(pointer: fine)').matches);
+
+    /* header state */
+    var hdr = d.getElementById('hdr');
+    if (hdr && w.addEventListener) {
+      w.addEventListener('scroll', function () { hdr.classList.toggle('scrolled', w.scrollY > 10); }, { passive: true });
+    }
+
+    /* scroll reveals + sequence triggers */
+    var rv = [].slice.call(d.querySelectorAll('.rv, .instr, .console, .pipe'));
+    if (rv.length && !reduced && 'IntersectionObserver' in w) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
+      }, { threshold: 0.18 });
+      rv.forEach(function (el) { io.observe(el); });
+    } else {
+      rv.forEach(function (el) { el.classList.add('on'); });
+    }
+
+    /* counters */
+    [].slice.call(d.querySelectorAll('.cnt')).forEach(function (el) {
+      var to = parseFloat(el.getAttribute('data-to')), dec = parseInt(el.getAttribute('data-dec') || '0', 10);
+      if (!Number.isFinite(to) || reduced) return;
+      var t0 = null, dur = 1300;
+      function fmt(v) { return dec ? v.toFixed(dec) : Math.round(v).toLocaleString('en-US'); }
+      function step(t) {
+        if (t0 === null) t0 = t;
+        var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = fmt(to * e);
+        if (p < 1) w.requestAnimationFrame(step);
+      }
+      w.requestAnimationFrame(step);
+    });
+
+    /* magnetic primary CTAs — subtle, physical */
+    if (fine && !reduced) {
+      [].slice.call(d.querySelectorAll('.btn.primary, .btn.terra')).forEach(function (b) {
+        b.addEventListener('pointermove', function (e) {
+          var r = b.getBoundingClientRect();
+          var dx = (e.clientX - r.left - r.width / 2) / r.width;
+          var dy = (e.clientY - r.top - r.height / 2) / r.height;
+          b.style.transform = 'translate(' + (dx * 4) + 'px,' + (dy * 3 - 1) + 'px)';
+        });
+        b.addEventListener('pointerleave', function () { b.style.transform = ''; });
+      });
+    }
+
+    /* cursor-following light on dark sections only */
+    var dk = d.querySelector('[data-light]');
+    if (dk && fine && !reduced && w.addEventListener) {
+      dk.style.backgroundImage = 'radial-gradient(560px circle at var(--mx,70%) var(--my,20%), rgba(201,168,106,.06), transparent 65%)';
+      dk.addEventListener('pointermove', function (e) {
+        var r = dk.getBoundingClientRect();
+        dk.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+        dk.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+      }, { passive: true });
+    }
+  } catch (e) { /* the instrument must never break the tool */ }
+})();
+</script>
+</body>
+</html>
